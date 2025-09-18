@@ -1,0 +1,2298 @@
+'use client';
+
+import * as React from 'react';
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Badge } from '@/components/ui/badge';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useFirestore } from '@/hooks/use-firestore';
+import { useToast } from '@/hooks/use-toast';
+import type { Timestamp } from 'firebase/firestore';
+import { useAuth } from '@/hooks/use-auth';
+// Firestore operations are now handled by the useFirestore hook
+import {
+  Plus, Camera, ScanLine, Search, Flame, Beef, Wheat, Droplets, 
+  Brain, Sparkles, Loader2, Trash2, Sun, Moon, Cookie, CakeSlice,
+  Download, Share2, FileText, MessageCircle, User, Save, FolderOpen
+} from 'lucide-react';
+import Link from 'next/link';
+import { analyzeFoodPhoto, AnalyzeFoodPhotoOutput } from '@/ai/flows/analyze-food-photo';
+
+interface FoodItem {
+  id: string;
+  name: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiber: number;
+  sugar: number;
+  portion: string;
+  weight: number; // in grams
+  category: 'breakfast' | 'lunch' | 'dinner' | 'snacks' | 'dessert';
+  createdAt: Timestamp | Date;
+  // Micro nutrients
+  vitaminA?: number;
+  vitaminC?: number;
+  vitaminD?: number;
+  vitaminE?: number;
+  vitaminK?: number;
+  thiamine?: number;
+  riboflavin?: number;
+  niacin?: number;
+  folate?: number;
+  vitaminB12?: number;
+  calcium?: number;
+  iron?: number;
+  magnesium?: number;
+  phosphorus?: number;
+  potassium?: number;
+  sodium?: number;
+  zinc?: number;
+  copper?: number;
+  manganese?: number;
+  selenium?: number;
+}
+
+interface UserProfile {
+  id: string;
+  age: number;
+  gender: string;
+  height: number;
+  weight: number;
+  activityLevel: string;
+  goal: string;
+  cuisine?: string;
+  dislikes?: string;
+  diet?: string;
+  allergies?: string;
+  createdAt: Timestamp | Date;
+}
+
+// Meal Plan Interfaces
+interface Meal {
+  name: string;
+  description: string;
+  ingredients: string[];
+  instructions: string;
+  prepTime: number;
+  cookTime: number;
+  totalTime: number;
+  calories: number;
+  protein: number;
+  carbohydrates: number;
+  fat: number;
+  fiber?: number;
+  sugar?: number;
+  sodium?: number;
+  cholesterol?: number;
+  saturatedFat?: number;
+  transFat?: number;
+  monounsaturatedFat?: number;
+  polyunsaturatedFat?: number;
+  omega3?: number;
+  omega6?: number;
+  vitaminA?: number;
+  vitaminC?: number;
+  vitaminD?: number;
+  vitaminE?: number;
+  vitaminK?: number;
+  thiamine?: number;
+  riboflavin?: number;
+  niacin?: number;
+  vitaminB6?: number;
+  folate?: number;
+  vitaminB12?: number;
+  biotin?: number;
+  pantothenicAcid?: number;
+  choline?: number;
+  calcium?: number;
+  iron?: number;
+  magnesium?: number;
+  phosphorus?: number;
+  potassium?: number;
+  zinc?: number;
+  copper?: number;
+  manganese?: number;
+  selenium?: number;
+  iodine?: number;
+  chromium?: number;
+  molybdenum?: number;
+}
+
+interface DayPlan {
+  day: string;
+  breakfast: Meal;
+  lunch: Meal;
+  dinner: Meal;
+  dailyTotals: {
+    calories: number;
+    protein: number;
+    carbohydrates: number;
+    fat: number;
+    fiber?: number;
+    sugar?: number;
+    sodium?: number;
+    cholesterol?: number;
+    saturatedFat?: number;
+    transFat?: number;
+    monounsaturatedFat?: number;
+    polyunsaturatedFat?: number;
+    omega3?: number;
+    omega6?: number;
+    vitaminA?: number;
+    vitaminC?: number;
+    vitaminD?: number;
+    vitaminE?: number;
+    vitaminK?: number;
+    thiamine?: number;
+    riboflavin?: number;
+    niacin?: number;
+    vitaminB6?: number;
+    folate?: number;
+    vitaminB12?: number;
+    biotin?: number;
+    pantothenicAcid?: number;
+    choline?: number;
+    calcium?: number;
+    iron?: number;
+    magnesium?: number;
+    phosphorus?: number;
+    potassium?: number;
+    zinc?: number;
+    copper?: number;
+    manganese?: number;
+    selenium?: number;
+    iodine?: number;
+    chromium?: number;
+    molybdenum?: number;
+  };
+}
+
+interface GenerateMealPlanInput {
+  age: number;
+  gender: string;
+  height: number;
+  weight: number;
+  activityLevel: string;
+  goal: string;
+  duration: number;
+  cuisine?: string;
+  allergies?: string;
+  dislikes?: string;
+  diet?: string;
+}
+
+interface GenerateMealPlanOutput {
+  plan: DayPlan[];
+}
+
+interface SavedMealPlan {
+  id: string;
+  name: string;
+  description?: string;
+  plan: GenerateMealPlanOutput;
+  profile: UserProfile;
+  createdAt: Timestamp | Date;
+  isActive?: boolean;
+  duration?: 'daily' | 'weekly' | 'monthly';
+  userId?: string;
+}
+
+const mealCategories = [
+  { id: 'breakfast', label: 'Breakfast', icon: <Sun className="w-4 h-4" /> },
+  { id: 'lunch', label: 'Lunch', icon: <Sun className="w-4 h-4" /> },
+  { id: 'dinner', label: 'Dinner', icon: <Moon className="w-4 h-4" /> },
+  { id: 'snacks', label: 'Snacks', icon: <Cookie className="w-4 h-4" /> },
+  { id: 'dessert', label: 'Dessert', icon: <CakeSlice className="w-4 h-4" /> },
+];
+
+export default function NutritionTrackerPage() {
+  const { data: foodLogs, addDocument: addFoodLog, deleteDocument: deleteFoodLog } = useFirestore<FoodItem>('foodLog', { limit: 100 });
+  const { data: userProfiles } = useFirestore<UserProfile>('userProfiles', { limit: 1 });
+  const { data: savedMealPlansData, loading: savedMealPlansLoading, addDocument: addDocumentToCollection, deleteDocument, updateDocument } = useFirestore<SavedMealPlan>('savedMealPlans', { limit: 50 });
+  const { user } = useAuth();
+  const { toast } = useToast();
+  
+  const [activeTab, setActiveTab] = useState('tracker');
+  const [showAddFood, setShowAddFood] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<AnalyzeFoodPhotoOutput | null>(null);
+  
+  // Meal Plan State
+  const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
+  const [mealPlan, setMealPlan] = useState<GenerateMealPlanOutput | null>(null);
+  const [mealPlanDuration, setMealPlanDuration] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [showLoadDialog, setShowLoadDialog] = useState(false);
+  const [editingPlan, setEditingPlan] = useState<SavedMealPlan | null>(null);
+  const [displayProfile, setDisplayProfile] = useState<any>(null);
+  const [isSavingPlan, setIsSavingPlan] = useState(false);
+  const [planName, setPlanName] = useState('');
+
+  // Function to call the AI meal plan API
+  const callMealPlanAPI = async (input: GenerateMealPlanInput): Promise<GenerateMealPlanOutput> => {
+    console.log('Generating AI meal plan with comprehensive nutrition...');
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+    
+    try {
+      const response = await fetch('/api/ai/generate-meal-plan', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(input),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('API Error:', errorData);
+        throw new Error(errorData.error || 'Failed to generate meal plan');
+      }
+
+      const result = await response.json();
+      console.log('AI meal plan generated successfully:', result);
+      return result;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Meal plan generation timed out. Please try again.');
+      }
+      
+      console.error('AI meal plan generation error:', error);
+      throw error;
+    }
+  };
+
+  // Function to generate meal plan from database (fallback)
+  const generateMealPlanFromDatabase = (input: GenerateMealPlanInput): GenerateMealPlanOutput => {
+    console.log('Generating meal plan from recipe database...');
+    
+    const days = [];
+    const duration = input.duration || 7;
+    
+    // Sample comprehensive recipes with full nutrition data
+    const recipes = [
+      {
+        name: "Mediterranean Quinoa Bowl",
+        description: "A nutritious bowl packed with protein and healthy fats",
+        ingredients: ["1 cup quinoa", "1/2 avocado", "1/4 cup chickpeas", "1/4 cup feta cheese", "1/4 cup cherry tomatoes", "2 tbsp olive oil", "1 tbsp lemon juice", "Fresh herbs"],
+        instructions: "1. Cook quinoa according to package instructions. 2. Slice avocado and tomatoes. 3. Mix chickpeas with olive oil and lemon juice. 4. Combine all ingredients in a bowl. 5. Top with feta cheese and fresh herbs.",
+        prepTime: 10,
+        cookTime: 15,
+        totalTime: 25,
+        calories: 420,
+        protein: 18,
+        carbohydrates: 45,
+        fat: 22,
+        fiber: 12,
+        sugar: 8,
+        sodium: 380,
+        cholesterol: 25,
+        saturatedFat: 6,
+        transFat: 0,
+        monounsaturatedFat: 12,
+        polyunsaturatedFat: 3,
+        omega3: 0.8,
+        omega6: 2.1,
+        vitaminA: 450,
+        vitaminC: 35,
+        vitaminD: 0,
+        vitaminE: 4.2,
+        vitaminK: 28,
+        thiamine: 0.3,
+        riboflavin: 0.4,
+        niacin: 2.8,
+        vitaminB6: 0.6,
+        folate: 120,
+        vitaminB12: 0.8,
+        biotin: 8,
+        pantothenicAcid: 1.2,
+        choline: 45,
+        calcium: 180,
+        iron: 4.2,
+        magnesium: 120,
+        phosphorus: 280,
+        potassium: 680,
+        zinc: 2.8,
+        copper: 0.6,
+        manganese: 1.8,
+        selenium: 15,
+        iodine: 12,
+        chromium: 8,
+        molybdenum: 25
+      },
+      {
+        name: "Grilled Salmon with Sweet Potato",
+        description: "Omega-3 rich salmon with roasted sweet potato and steamed broccoli",
+        ingredients: ["6oz salmon fillet", "1 medium sweet potato", "1 cup broccoli", "2 tbsp olive oil", "1 tsp garlic powder", "1/2 tsp paprika", "Salt and pepper"],
+        instructions: "1. Preheat oven to 400°F. 2. Season salmon with garlic powder, paprika, salt and pepper. 3. Cut sweet potato into wedges and toss with olive oil. 4. Roast sweet potato for 25 minutes. 5. Grill salmon for 6-8 minutes per side. 6. Steam broccoli for 5 minutes. 7. Serve together.",
+        prepTime: 15,
+        cookTime: 30,
+        totalTime: 45,
+        calories: 485,
+        protein: 42,
+        carbohydrates: 28,
+        fat: 24,
+        fiber: 8,
+        sugar: 12,
+        sodium: 420,
+        cholesterol: 95,
+        saturatedFat: 4,
+        transFat: 0,
+        monounsaturatedFat: 14,
+        polyunsaturatedFat: 5,
+        omega3: 2.8,
+        omega6: 1.2,
+        vitaminA: 18500,
+        vitaminC: 95,
+        vitaminD: 15,
+        vitaminE: 3.8,
+        vitaminK: 120,
+        thiamine: 0.4,
+        riboflavin: 0.6,
+        niacin: 12,
+        vitaminB6: 1.8,
+        folate: 45,
+        vitaminB12: 4.2,
+        biotin: 12,
+        pantothenicAcid: 2.8,
+        choline: 180,
+        calcium: 85,
+        iron: 2.2,
+        magnesium: 95,
+        phosphorus: 480,
+        potassium: 1200,
+        zinc: 1.8,
+        copper: 0.3,
+        manganese: 0.8,
+        selenium: 45,
+        iodine: 25,
+        chromium: 2,
+        molybdenum: 8
+      }
+    ];
+    
+    // Generate meal plan for each day
+    for (let i = 0; i < duration; i++) {
+      const dayNumber = i + 1;
+      
+      // Select recipes for each meal
+      const breakfast = recipes[0];
+      const lunch = recipes[1];
+      const dinner = recipes[0]; // Rotate recipes
+      
+      const dailyTotals = {
+        calories: breakfast.calories + lunch.calories + dinner.calories,
+        protein: breakfast.protein + lunch.protein + dinner.protein,
+        carbohydrates: breakfast.carbohydrates + lunch.carbohydrates + dinner.carbohydrates,
+        fat: breakfast.fat + lunch.fat + dinner.fat,
+        fiber: (breakfast.fiber || 0) + (lunch.fiber || 0) + (dinner.fiber || 0),
+        sugar: (breakfast.sugar || 0) + (lunch.sugar || 0) + (dinner.sugar || 0),
+        sodium: (breakfast.sodium || 0) + (lunch.sodium || 0) + (dinner.sodium || 0),
+        cholesterol: (breakfast.cholesterol || 0) + (lunch.cholesterol || 0) + (dinner.cholesterol || 0),
+        saturatedFat: (breakfast.saturatedFat || 0) + (lunch.saturatedFat || 0) + (dinner.saturatedFat || 0),
+        transFat: (breakfast.transFat || 0) + (lunch.transFat || 0) + (dinner.transFat || 0),
+        monounsaturatedFat: (breakfast.monounsaturatedFat || 0) + (lunch.monounsaturatedFat || 0) + (dinner.monounsaturatedFat || 0),
+        polyunsaturatedFat: (breakfast.polyunsaturatedFat || 0) + (lunch.polyunsaturatedFat || 0) + (dinner.polyunsaturatedFat || 0),
+        omega3: (breakfast.omega3 || 0) + (lunch.omega3 || 0) + (dinner.omega3 || 0),
+        omega6: (breakfast.omega6 || 0) + (lunch.omega6 || 0) + (dinner.omega6 || 0),
+        vitaminA: (breakfast.vitaminA || 0) + (lunch.vitaminA || 0) + (dinner.vitaminA || 0),
+        vitaminC: (breakfast.vitaminC || 0) + (lunch.vitaminC || 0) + (dinner.vitaminC || 0),
+        vitaminD: (breakfast.vitaminD || 0) + (lunch.vitaminD || 0) + (dinner.vitaminD || 0),
+        vitaminE: (breakfast.vitaminE || 0) + (lunch.vitaminE || 0) + (dinner.vitaminE || 0),
+        vitaminK: (breakfast.vitaminK || 0) + (lunch.vitaminK || 0) + (dinner.vitaminK || 0),
+        thiamine: (breakfast.thiamine || 0) + (lunch.thiamine || 0) + (dinner.thiamine || 0),
+        riboflavin: (breakfast.riboflavin || 0) + (lunch.riboflavin || 0) + (dinner.riboflavin || 0),
+        niacin: (breakfast.niacin || 0) + (lunch.niacin || 0) + (dinner.niacin || 0),
+        vitaminB6: (breakfast.vitaminB6 || 0) + (lunch.vitaminB6 || 0) + (dinner.vitaminB6 || 0),
+        folate: (breakfast.folate || 0) + (lunch.folate || 0) + (dinner.folate || 0),
+        vitaminB12: (breakfast.vitaminB12 || 0) + (lunch.vitaminB12 || 0) + (dinner.vitaminB12 || 0),
+        biotin: (breakfast.biotin || 0) + (lunch.biotin || 0) + (dinner.biotin || 0),
+        pantothenicAcid: (breakfast.pantothenicAcid || 0) + (lunch.pantothenicAcid || 0) + (dinner.pantothenicAcid || 0),
+        choline: (breakfast.choline || 0) + (lunch.choline || 0) + (dinner.choline || 0),
+        calcium: (breakfast.calcium || 0) + (lunch.calcium || 0) + (dinner.calcium || 0),
+        iron: (breakfast.iron || 0) + (lunch.iron || 0) + (dinner.iron || 0),
+        magnesium: (breakfast.magnesium || 0) + (lunch.magnesium || 0) + (dinner.magnesium || 0),
+        phosphorus: (breakfast.phosphorus || 0) + (lunch.phosphorus || 0) + (dinner.phosphorus || 0),
+        potassium: (breakfast.potassium || 0) + (lunch.potassium || 0) + (dinner.potassium || 0),
+        zinc: (breakfast.zinc || 0) + (lunch.zinc || 0) + (dinner.zinc || 0),
+        copper: (breakfast.copper || 0) + (lunch.copper || 0) + (dinner.copper || 0),
+        manganese: (breakfast.manganese || 0) + (lunch.manganese || 0) + (dinner.manganese || 0),
+        selenium: (breakfast.selenium || 0) + (lunch.selenium || 0) + (dinner.selenium || 0),
+        iodine: (breakfast.iodine || 0) + (lunch.iodine || 0) + (dinner.iodine || 0),
+        chromium: (breakfast.chromium || 0) + (lunch.chromium || 0) + (dinner.chromium || 0),
+        molybdenum: (breakfast.molybdenum || 0) + (lunch.molybdenum || 0) + (dinner.molybdenum || 0)
+      };
+      
+      days.push({
+        day: `Day ${dayNumber}`,
+        breakfast: breakfast,
+        lunch: lunch,
+        dinner: dinner,
+        dailyTotals,
+      });
+    }
+    
+    console.log(`Generated ${duration}-day meal plan with comprehensive nutrition`);
+    return { plan: days };
+  };
+
+  const form = useForm<{
+    name: string;
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    fiber: number;
+    sugar: number;
+    portion: string;
+    weight: number;
+    category: string;
+  }>({
+    resolver: zodResolver(z.object({
+      name: z.string().min(1, 'Food name is required'),
+      calories: z.number().min(0),
+      protein: z.number().min(0),
+      carbs: z.number().min(0),
+      fat: z.number().min(0),
+      fiber: z.number().min(0),
+      sugar: z.number().min(0),
+      portion: z.string().min(1, 'Portion size is required'),
+      weight: z.number().min(0, 'Weight must be positive'),
+      category: z.string(),
+    })),
+    defaultValues: {
+      name: '',
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      fiber: 0,
+      sugar: 0,
+      portion: '',
+      weight: 0,
+      category: 'breakfast',
+    },
+  });
+
+  const todayFoods = foodLogs?.filter(food => {
+    const today = new Date();
+    const foodDate = food.createdAt instanceof Date ? food.createdAt : food.createdAt.toDate();
+    return foodDate.toDateString() === today.toDateString();
+  }) || [];
+
+  const todayStats = todayFoods.reduce((acc, food) => ({
+    calories: acc.calories + food.calories,
+    protein: acc.protein + food.protein,
+    carbs: acc.carbs + food.carbs,
+    fat: acc.fat + food.fat,
+    fiber: acc.fiber + food.fiber,
+    sugar: acc.sugar + food.sugar,
+  }), { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0 });
+
+  const handleAddFood = async (data: any) => {
+    try {
+      await addFoodLog({
+        ...data,
+        category: data.category as any,
+      });
+      toast({
+        title: 'Food Added!',
+        description: `${data.name} has been added to your ${data.category} log.`,
+      });
+      setShowAddFood(false);
+      form.reset();
+      } catch (error) {
+        toast({
+          variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to add food item.',
+        });
+    }
+  };
+
+  const handleAnalyzePhoto = async (file: File) => {
+    setIsAnalyzing(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const photoDataUri = e.target?.result as string;
+        const result = await analyzeFoodPhoto({ photoDataUri });
+        
+        if (result.foodItems && result.foodItems.length > 0) {
+          const foodItem = result.foodItems[0];
+          setAnalysisResult(result);
+          
+          // Auto-fill the form with the first food item
+          form.setValue('name', foodItem.name);
+          form.setValue('calories', foodItem.calories);
+          form.setValue('protein', foodItem.protein);
+          form.setValue('carbs', foodItem.carbohydrates);
+          form.setValue('fat', foodItem.fat);
+          form.setValue('fiber', foodItem.fiber);
+          form.setValue('sugar', foodItem.sugar);
+          form.setValue('portion', foodItem.portionSize);
+          form.setValue('weight', foodItem.weight);
+          
+        toast({
+            title: 'Photo Analyzed!',
+            description: `Identified: ${foodItem.name} with comprehensive macro and micro nutrients`,
+          });
+          
+          // Open the add food dialog to show the results
+          setShowAddFood(true);
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Analysis Failed',
+        description: 'Could not analyze the food photo.',
+      });
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  // Handle meal plan generation
+  const handleGenerateMealPlan = async () => {
+    // Check for profile data in localStorage first, then fallback to Firestore
+    let profileData = null;
+    
+    try {
+      const savedProfile = localStorage.getItem('user-nutrition-profile');
+      if (savedProfile) {
+        profileData = JSON.parse(savedProfile);
+      }
+    } catch (error) {
+      console.error('Error loading profile from localStorage:', error);
+    }
+
+    // If no localStorage profile, check Firestore
+    if (!profileData && (!userProfiles || userProfiles.length === 0)) {
+        toast({
+          variant: 'destructive',
+        title: '👤 Profile Required',
+        description: 'Please complete your profile first to generate a personalized meal plan.',
+        });
+        return;
+      }
+
+    // Use Firestore profile if localStorage profile is not available
+    if (!profileData && userProfiles && userProfiles.length > 0) {
+      profileData = userProfiles[0];
+    }
+
+    // Set display profile for UI
+    if (profileData) {
+      setDisplayProfile(profileData);
+    }
+
+    // Check if required fields are filled
+    if (!profileData.age || !profileData.gender || !profileData.height || !profileData.weight || !profileData.activityLevel || !profileData.goal) {
+      toast({
+        variant: 'destructive',
+        title: '📝 Incomplete Profile',
+        description: 'Please complete your profile with all required fields (age, gender, height, weight, activity level, and goal) before generating a meal plan.',
+        });
+        return;
+      }
+
+    setIsGeneratingPlan(true);
+    try {
+      // Determine duration based on selection
+      let duration = 7; // default weekly
+      if (mealPlanDuration === 'daily') duration = 1;
+      else if (mealPlanDuration === 'weekly') duration = 7;
+      else if (mealPlanDuration === 'monthly') duration = 30;
+      
+      const input: GenerateMealPlanInput = {
+        age: Number(profileData.age),
+        gender: profileData.gender,
+        height: Number(profileData.height),
+        weight: Number(profileData.weight),
+        activityLevel: profileData.activityLevel,
+        goal: profileData.goal,
+        duration: duration,
+        cuisine: profileData.cuisine || undefined,
+        allergies: profileData.allergies || undefined,
+        dislikes: profileData.dislikes || undefined,
+        diet: profileData.diet || undefined,
+      };
+      
+      // Try AI generation first, fallback to database
+      let result;
+      try {
+        result = await callMealPlanAPI(input);
+      } catch (error) {
+        console.log('AI generation failed, using database fallback:', error);
+        result = generateMealPlanFromDatabase(input);
+      }
+      
+      console.log('Meal plan generation result:', result);
+      setMealPlan(result);
+       toast({
+        title: '🎉 Meal Plan Generated!',
+        description: `Your personalized ${mealPlanDuration} meal plan based on your profile is ready! 🍽️`,
+      });
+    } catch (error) {
+        console.error('Meal plan generation error:', error);
+        toast({
+            variant: 'destructive',
+        title: '❌ Generation Failed',
+            description: error instanceof Error ? error.message : 'Could not generate meal plan. Please try again.',
+        });
+    } finally {
+        setIsGeneratingPlan(false);
+    }
+  };
+  
+  // PDF Export Function
+  const handleExportToPDF = async () => {
+    if (!mealPlan) {
+      toast({
+        variant: 'destructive',
+        title: 'No Meal Plan',
+        description: 'Please generate a meal plan first before exporting.',
+      });
+      return;
+    }
+
+    try {
+      // Create a comprehensive text-based meal plan for PDF
+      let mealPlanText = `🍽️ Personalized Meal Plan\n\n`;
+      mealPlanText += `Generated on: ${new Date().toLocaleDateString()}\n`;
+      mealPlanText += `Duration: ${mealPlanDuration.charAt(0).toUpperCase() + mealPlanDuration.slice(1)}\n\n`;
+      
+      mealPlan.plan.forEach((day, index) => {
+        mealPlanText += `📅 ${day.day}\n`;
+        mealPlanText += `==========\n\n`;
+        
+        // Breakfast
+        mealPlanText += `🌅 Breakfast: ${day.breakfast.name}\n`;
+        mealPlanText += `📝 Description: ${day.breakfast.description}\n`;
+        mealPlanText += `⏱️ Timing: ${day.breakfast.prepTime} min prep, ${day.breakfast.cookTime} min cook, ${day.breakfast.totalTime} min total\n`;
+        mealPlanText += `🥘 Ingredients: ${day.breakfast.ingredients.join(', ')}\n`;
+        mealPlanText += `👨‍🍳 Instructions: ${day.breakfast.instructions}\n`;
+        mealPlanText += `📊 Nutrition: ${day.breakfast.calories} cal, ${day.breakfast.protein}g protein, ${day.breakfast.carbohydrates}g carbs, ${day.breakfast.fat}g fat\n\n`;
+        
+        // Lunch
+        mealPlanText += `🌞 Lunch: ${day.lunch.name}\n`;
+        mealPlanText += `📝 Description: ${day.lunch.description}\n`;
+        mealPlanText += `⏱️ Timing: ${day.lunch.prepTime} min prep, ${day.lunch.cookTime} min cook, ${day.lunch.totalTime} min total\n`;
+        mealPlanText += `🥘 Ingredients: ${day.lunch.ingredients.join(', ')}\n`;
+        mealPlanText += `👨‍🍳 Instructions: ${day.lunch.instructions}\n`;
+        mealPlanText += `📊 Nutrition: ${day.lunch.calories} cal, ${day.lunch.protein}g protein, ${day.lunch.carbohydrates}g carbs, ${day.lunch.fat}g fat\n\n`;
+        
+        // Dinner
+        mealPlanText += `🌙 Dinner: ${day.dinner.name}\n`;
+        mealPlanText += `📝 Description: ${day.dinner.description}\n`;
+        mealPlanText += `⏱️ Timing: ${day.dinner.prepTime} min prep, ${day.dinner.cookTime} min cook, ${day.dinner.totalTime} min total\n`;
+        mealPlanText += `🥘 Ingredients: ${day.dinner.ingredients.join(', ')}\n`;
+        mealPlanText += `👨‍🍳 Instructions: ${day.dinner.instructions}\n`;
+        mealPlanText += `📊 Nutrition: ${day.dinner.calories} cal, ${day.dinner.protein}g protein, ${day.dinner.carbohydrates}g carbs, ${day.dinner.fat}g fat\n\n`;
+        
+        // Daily totals
+        mealPlanText += `📈 Daily Totals: ${day.dailyTotals.calories} calories, ${day.dailyTotals.protein}g protein, ${day.dailyTotals.carbohydrates}g carbs, ${day.dailyTotals.fat}g fat\n\n`;
+        mealPlanText += `---\n\n`;
+      });
+      
+      // Create and download the file
+      const blob = new Blob([mealPlanText], { type: 'text/plain' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `meal-plan-${new Date().toISOString().split('T')[0]}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      
+        toast({
+        title: '📄 Meal Plan Exported!',
+        description: 'Your meal plan has been downloaded as a text file.',
+        });
+    } catch (error) {
+      console.error('Error exporting meal plan:', error);
+       toast({
+        variant: 'destructive',
+        title: '❌ Export Failed',
+        description: 'Could not export your meal plan. Please try again.',
+      });
+    }
+  };
+  
+  // WhatsApp Share Function
+  const handleShareViaWhatsApp = () => {
+    if (!mealPlan) {
+      toast({
+        variant: 'destructive',
+        title: 'No Meal Plan',
+        description: 'Please generate a meal plan first before sharing.',
+      });
+      return;
+    }
+
+    try {
+      // Create a summary for WhatsApp
+      let summary = `🍽️ My Personalized Meal Plan\n\n`;
+      summary += `📅 Generated on: ${new Date().toLocaleDateString()}\n`;
+      summary += `⏰ Duration: ${mealPlanDuration.charAt(0).toUpperCase() + mealPlanDuration.slice(1)}\n\n`;
+      
+      // Add first day as preview
+      if (mealPlan.plan.length > 0) {
+        const firstDay = mealPlan.plan[0];
+        summary += `📅 Day 1 Preview:\n`;
+        summary += `🌅 Breakfast: ${firstDay.breakfast.name}\n`;
+        summary += `🌞 Lunch: ${firstDay.lunch.name}\n`;
+        summary += `🌙 Dinner: ${firstDay.dinner.name}\n\n`;
+        summary += `📊 Daily Total: ${firstDay.dailyTotals.calories} calories\n\n`;
+      }
+      
+      summary += `✨ Generated by Find Your Inner Peace App 🌟`;
+      
+      // Encode for WhatsApp
+      const encodedText = encodeURIComponent(summary);
+      const whatsappUrl = `https://wa.me/?text=${encodedText}`;
+      
+      // Open WhatsApp
+      window.open(whatsappUrl, '_blank');
+      
+      toast({
+        title: '📱 Sharing to WhatsApp!',
+        description: 'Your meal plan summary is being shared.',
+      });
+    } catch (error) {
+      console.error('Error sharing meal plan:', error);
+      toast({
+        variant: 'destructive',
+        title: '❌ Share Failed',
+        description: 'Could not share your meal plan. Please try again.',
+      });
+    }
+  };
+
+  // CRUD Functions for Meal Plans
+  const saveMealPlan = async () => {
+    if (!user || !mealPlan || !displayProfile) return;
+    
+    if (!planName.trim()) {
+      toast({
+        variant: 'destructive',
+        title: '📝 Plan Name Required',
+        description: 'Please enter a name for your meal plan.',
+      });
+      return;
+    }
+
+    setIsSavingPlan(true);
+    try {
+      const planData = {
+        name: planName.trim(),
+        description: `${mealPlanDuration.charAt(0).toUpperCase() + mealPlanDuration.slice(1)} meal plan`,
+        plan: mealPlan,
+        profile: displayProfile,
+        duration: mealPlanDuration,
+        isActive: false
+      };
+      
+      await addDocumentToCollection(planData);
+      
+      toast({
+        title: '💾 Meal Plan Saved!',
+        description: `"${planName}" has been saved successfully.`,
+      });
+      
+      setShowSaveDialog(false);
+      setPlanName('');
+    } catch (error) {
+      console.error('Error saving meal plan:', error);
+      toast({
+        variant: 'destructive',
+        title: '❌ Error Saving Plan',
+        description: 'Could not save your meal plan. Please try again.',
+      });
+    } finally {
+      setIsSavingPlan(false);
+    }
+  };
+
+  // Load a saved meal plan
+  const loadMealPlan = (savedPlan: SavedMealPlan) => {
+    setMealPlan(savedPlan.plan);
+    setMealPlanDuration(savedPlan.duration || 'weekly');
+    setDisplayProfile(savedPlan.profile);
+    setShowLoadDialog(false);
+    
+    toast({
+      title: '📂 Meal Plan Loaded!',
+      description: `"${savedPlan.name}" has been loaded successfully.`,
+    });
+  };
+
+  // Delete a saved meal plan
+  const deleteMealPlan = async (planId: string) => {
+    if (!user) return;
+    
+    try {
+      await deleteDocument(planId);
+      
+      toast({
+        title: '🗑️ Meal Plan Deleted',
+        description: 'The meal plan has been deleted successfully.',
+      });
+    } catch (error) {
+      console.error('Error deleting meal plan:', error);
+      toast({
+        variant: 'destructive',
+        title: '❌ Error Deleting Plan',
+        description: 'Could not delete the meal plan. Please try again.',
+      });
+    }
+  };
+
+  // These functions are now handled by the useFirestore hook
+
+  return (
+    <div className="flex-1 space-y-6 p-4 md:p-6">
+      <div className="space-y-2">
+        <h1 className="text-3xl font-bold tracking-tight">Nutrition Tracker</h1>
+        <p className="text-muted-foreground">
+          Log your meals, track your intake, and discover nutritional insights.
+        </p>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="tracker">Food Tracker</TabsTrigger>
+          <TabsTrigger value="insights">AI Insights</TabsTrigger>
+          <TabsTrigger value="planner">AI Meal Planner</TabsTrigger>
+          <TabsTrigger value="history">History</TabsTrigger>
+          </TabsList>
+
+        <TabsContent value="tracker" className="space-y-6">
+          {/* Today's Stats */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                      <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Calories</CardTitle>
+                <Flame className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{todayStats.calories}</div>
+                <p className="text-xs text-muted-foreground">of 2000 goal</p>
+                <Progress value={(todayStats.calories / 2000) * 100} className="mt-2" />
+                                  </CardContent>
+                                </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Protein</CardTitle>
+                <Beef className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{todayStats.protein}g</div>
+                <p className="text-xs text-muted-foreground">of 150g goal</p>
+                <Progress value={(todayStats.protein / 150) * 100} className="mt-2" />
+                        </CardContent>
+                      </Card>
+              <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Carbs</CardTitle>
+                <Wheat className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{todayStats.carbs}g</div>
+                <p className="text-xs text-muted-foreground">of 250g goal</p>
+                <Progress value={(todayStats.carbs / 250) * 100} className="mt-2" />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Fat</CardTitle>
+                <Droplets className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{todayStats.fat}g</div>
+                <p className="text-xs text-muted-foreground">of 65g goal</p>
+                <Progress value={(todayStats.fat / 65) * 100} className="mt-2" />
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* AI Analysis Results */}
+          {analysisResult && (
+            <Card className="border-primary/20 bg-primary/5">
+                <CardHeader>
+                <CardTitle className="flex items-center text-primary">
+                  <Brain className="w-5 h-5 mr-2" />
+                  AI Food Analysis Results
+                </CardTitle>
+                </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {analysisResult.foodItems.map((item, index) => (
+                    <div key={index} className="p-4 bg-white rounded-lg border">
+                      <h4 className="font-semibold text-lg mb-2">{item.name}</h4>
+                      <p className="text-sm text-gray-600 mb-3">Portion: {item.portionSize} • Weight: {item.weight}g</p>
+                      
+                      {/* Macro Nutrients */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                  <div className="text-center">
+                          <div className="text-2xl font-bold text-orange-600">{item.calories}</div>
+                          <div className="text-xs text-gray-500">Calories</div>
+                  </div>
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-primary">{item.protein}g</div>
+                          <div className="text-xs text-gray-500">Protein</div>
+                      </div>
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-primary">{item.carbohydrates}g</div>
+                          <div className="text-xs text-gray-500">Carbs</div>
+                    </div>
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-accent">{item.fat}g</div>
+                          <div className="text-xs text-gray-500">Fat</div>
+                      </div>
+                    </div>
+
+                      {/* Micro Nutrients */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                        {item.vitaminA && <div><strong>Vitamin A:</strong> {item.vitaminA}mcg</div>}
+                        {item.vitaminC && <div><strong>Vitamin C:</strong> {item.vitaminC}mg</div>}
+                        {item.calcium && <div><strong>Calcium:</strong> {item.calcium}mg</div>}
+                        {item.iron && <div><strong>Iron:</strong> {item.iron}mg</div>}
+                        {item.magnesium && <div><strong>Magnesium:</strong> {item.magnesium}mg</div>}
+                        {item.potassium && <div><strong>Potassium:</strong> {item.potassium}mg</div>}
+                        {item.zinc && <div><strong>Zinc:</strong> {item.zinc}mg</div>}
+                        {item.fiber && <div><strong>Fiber:</strong> {item.fiber}g</div>}
+                      </div>
+                    </div>
+                  ))}
+                  </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Quick Actions */}
+                  <div className="space-y-4">
+            <div className="flex gap-2 flex-wrap">
+              <Dialog open={showAddFood} onOpenChange={setShowAddFood}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Food
+                  </Button>
+                </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                  <DialogTitle>Add Food Item</DialogTitle>
+                  <DialogDescription>
+                    Log a new food item to track your nutrition.
+                  </DialogDescription>
+              </DialogHeader>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(handleAddFood)} className="space-y-4">
+                    <div className="grid grid-cols-3 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Food Name</FormLabel>
+                            <FormControl>
+                              <Input placeholder="e.g., Grilled Chicken Breast" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="portion"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Portion Size</FormLabel>
+                            <FormControl>
+                              <Input placeholder="e.g., 1 cup, 150g" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="weight"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Weight (g)</FormLabel>
+                            <FormControl>
+                              <Input type="number" placeholder="e.g., 150" {...field} onChange={(e) => field.onChange(Number(e.target.value))} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <FormField
+                      control={form.control}
+                      name="category"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Meal Category</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select meal category" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {mealCategories.map((category) => (
+                                <SelectItem key={category.id} value={category.id}>
+                                  <div className="flex items-center">
+                                    {category.icon}
+                                    <span className="ml-2">{category.label}</span>
+                    </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <div className="grid grid-cols-3 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="calories"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Calories</FormLabel>
+                            <FormControl>
+                              <Input type="number" {...field} onChange={(e) => field.onChange(Number(e.target.value))} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="protein"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Protein (g)</FormLabel>
+                            <FormControl>
+                              <Input type="number" {...field} onChange={(e) => field.onChange(Number(e.target.value))} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="carbs"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Carbs (g)</FormLabel>
+                            <FormControl>
+                              <Input type="number" {...field} onChange={(e) => field.onChange(Number(e.target.value))} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <div className="grid grid-cols-3 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="fat"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Fat (g)</FormLabel>
+                            <FormControl>
+                              <Input type="number" {...field} onChange={(e) => field.onChange(Number(e.target.value))} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="fiber"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Fiber (g)</FormLabel>
+                            <FormControl>
+                              <Input type="number" {...field} onChange={(e) => field.onChange(Number(e.target.value))} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="sugar"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Sugar (g)</FormLabel>
+                            <FormControl>
+                              <Input type="number" {...field} onChange={(e) => field.onChange(Number(e.target.value))} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                  </div>
+              <DialogFooter>
+                      <Button type="submit">Add Food</Button>
+              </DialogFooter>
+                  </form>
+                </Form>
+            </DialogContent>
+          </Dialog>
+                  <Button
+                    variant="outline"
+              size="sm"
+              onClick={() => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'image/*';
+                input.onchange = (e) => {
+                  const file = (e.target as HTMLInputElement).files?.[0];
+                  if (file) {
+                    handleAnalyzePhoto(file);
+                  }
+                };
+                input.click();
+              }}
+              disabled={isAnalyzing}
+            >
+              {isAnalyzing ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Camera className="w-4 h-4 mr-2" />
+              )}
+              AI Photo Analysis
+                  </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'image/*';
+                input.onchange = (e) => {
+                  const file = (e.target as HTMLInputElement).files?.[0];
+                  if (file) {
+                    handleAnalyzePhoto(file);
+                  }
+                };
+                input.click();
+              }}
+              disabled={isAnalyzing}
+            >
+              {isAnalyzing ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <ScanLine className="w-4 h-4 mr-2" />
+              )}
+              AI Label Scan
+            </Button>
+                  <Button
+                    variant="outline"
+              size="sm"
+              onClick={() => {
+                // Open a simple search dialog
+                const searchTerm = prompt('Enter food name to search:');
+                if (searchTerm) {
+                  toast({
+                    title: 'Food Search',
+                    description: `Searching for "${searchTerm}"... Feature coming soon!`,
+                  });
+                }
+              }}
+            >
+              <Search className="w-4 h-4 mr-2" />
+              AI Food Search
+                  </Button>
+            </div>
+          </div>
+
+          {/* Meal Categories */}
+          {mealCategories.map((category) => {
+            const categoryFoods = todayFoods.filter(food => food.category === category.id);
+            return (
+              <Card key={category.id}>
+            <CardHeader>
+                  <CardTitle className="flex items-center">
+                    {category.icon}
+                    <span className="ml-2">{category.label}</span>
+                    <Badge variant="secondary" className="ml-auto">
+                      {categoryFoods.length} items
+                    </Badge>
+                  </CardTitle>
+            </CardHeader>
+                <CardContent>
+                  {categoryFoods.length > 0 ? (
+                    <div className="space-y-2">
+                      {categoryFoods.map((food) => (
+                        <div key={food.id} className="flex items-center justify-between p-2 border rounded">
+                          <div>
+                            <p className="font-medium">{food.name}</p>
+                            <p className="text-sm text-muted-foreground">{food.portion} • {food.weight}g</p>
+                  </div>
+                          <div className="text-right">
+                            <p className="font-medium">{food.calories} cal</p>
+                <p className="text-sm text-muted-foreground">
+                              {food.protein}p • {food.carbs}c • {food.fat}f
+                </p>
+              </div>
+                  <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => deleteFoodLog(food.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                  </Button>
+                    </div>
+                      ))}
+                  </div>
+                  ) : (
+                    <p className="text-muted-foreground text-center py-4">
+                      No {category.label.toLowerCase()} logged yet
+                    </p>
+                  )}
+            </CardContent>
+          </Card>
+            );
+          })}
+        </TabsContent>
+
+        <TabsContent value="insights" className="space-y-6">
+                <Card>
+                    <CardHeader>
+              <CardTitle className="flex items-center">
+                <Brain className="w-5 h-5 mr-2" />
+                AI Nutrition Insights
+              </CardTitle>
+                    </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="p-4 border rounded-lg">
+                  <h4 className="font-semibold mb-2">🍎 Foods for Better Health</h4>
+                  <ul className="text-sm space-y-1">
+                    <li>• Add more leafy greens for vitamins A, C, K</li>
+                    <li>• Include fatty fish for omega-3 fatty acids</li>
+                    <li>• Eat berries for antioxidants</li>
+                    <li>• Add nuts for healthy fats and protein</li>
+                  </ul>
+            </div>
+                <div className="p-4 border rounded-lg">
+                  <h4 className="font-semibold mb-2">⚖️ Balance Your Macros</h4>
+                  <ul className="text-sm space-y-1">
+                    <li>• Increase protein intake by 15g</li>
+                    <li>• Reduce refined carbs</li>
+                    <li>• Add more fiber-rich foods</li>
+                    <li>• Stay hydrated with 8+ glasses of water</li>
+                  </ul>
+                </div>
+              </div>
+            </CardContent>
+                </Card>
+        </TabsContent>
+
+        {/* Removed duplicate AI Meal Planner section */}
+              </CardTitle>
+                            </CardHeader>
+            <CardContent className="space-y-4">
+              {!userProfiles || userProfiles.length === 0 ? (
+                <div className="text-center py-8 space-y-4">
+                  <div className="w-16 h-16 mx-auto bg-orange-100 rounded-full flex items-center justify-center">
+                    <User className="w-8 h-8 text-orange-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Profile Required</h3>
+                    <p className="text-gray-600 mb-4">
+                      To generate personalized meal plans, please complete your profile first. 
+                      We need your age, gender, height, weight, activity level, and goals to create the perfect meal plan for you.
+                    </p>
+                            <Link href="/dashboard/profile">
+                      <Button className="w-full">
+                        <User className="w-4 h-4 mr-2" />
+                        Complete Your Profile
+                        </Button>
+                    </Link>
+                  </div>
+                </div>
+              ) : (
+                <>
+
+                  {/* Meal Plan Duration Selector */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">Meal Plan Duration</h3>
+                    <div className="flex gap-2 flex-wrap">
+                      <Button
+                        variant={mealPlanDuration === 'daily' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setMealPlanDuration('daily')}
+                      >
+                        Daily (1 day)
+                      </Button>
+                      <Button
+                        variant={mealPlanDuration === 'weekly' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setMealPlanDuration('weekly')}
+                      >
+                        Weekly (7 days)
+                      </Button>
+                      <Button
+                        variant={mealPlanDuration === 'monthly' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setMealPlanDuration('monthly')}
+                      >
+                        Monthly (30 days)
+                      </Button>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Choose the duration for your personalized meal plan. The plan will be automatically generated based on your profile preferences.
+                    </p>
+            </div>
+
+                  {/* Profile Information Display */}
+                  {displayProfile && (
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold">Your Profile</h3>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="p-4 border rounded-lg bg-muted/50">
+                          <h4 className="font-medium mb-2">Basic Information</h4>
+                          <div className="space-y-1 text-sm">
+                            <p><span className="font-medium">Age:</span> {displayProfile.age || 'Not set'}</p>
+                            <p><span className="font-medium">Gender:</span> {displayProfile.gender || 'Not set'}</p>
+                            <p><span className="font-medium">Height:</span> {displayProfile.height ? `${displayProfile.height} cm` : 'Not set'}</p>
+                            <p><span className="font-medium">Weight:</span> {displayProfile.weight ? `${displayProfile.weight} kg` : 'Not set'}</p>
+                            <p><span className="font-medium">Activity Level:</span> {displayProfile.activityLevel || 'Not set'}</p>
+                            <p><span className="font-medium">Goal:</span> {displayProfile.goal || 'Not set'}</p>
+            </div>
+                        </div>
+                        <div className="p-4 border rounded-lg bg-muted/50">
+                          <h4 className="font-medium mb-2">Dietary Preferences</h4>
+                          <div className="space-y-1 text-sm">
+                            <p><span className="font-medium">Cuisine:</span> {displayProfile.cuisine || 'Any'}</p>
+                            <p><span className="font-medium">Diet:</span> {displayProfile.diet || 'None specified'}</p>
+                            <p><span className="font-medium">Allergies:</span> {displayProfile.allergies || 'None'}</p>
+                            <p><span className="font-medium">Dislikes:</span> {displayProfile.dislikes || 'None'}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Auto-generation status */}
+                  {isGeneratingPlan ? (
+                    <div className="text-center py-8 space-y-4">
+                      <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
+                        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-foreground mb-2">Generating Your Meal Plan</h3>
+                        <p className="text-muted-foreground">
+                          Creating your personalized weekly meal plan based on your profile...
+                        </p>
+                      </div>
+                    </div>
+                  ) : !mealPlan ? (
+                    <div className="text-center py-8 space-y-4">
+                      <div className="w-16 h-16 mx-auto bg-muted rounded-full flex items-center justify-center">
+                        <Sparkles className="w-8 h-8 text-muted-foreground" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-foreground mb-2">Meal Plan Ready</h3>
+                        <p className="text-muted-foreground">
+                          Your personalized meal plan will be automatically generated when you have a complete profile.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-4 space-y-4">
+                      <div>
+                        <h4 className="text-lg font-semibold mb-2">Ready to Generate Your Meal Plan?</h4>
+                        <p className="text-muted-foreground">
+                          Your profile is complete. Click below to generate your personalized {mealPlanDuration} meal plan.
+                        </p>
+                      </div>
+                  <Button 
+                    onClick={handleGenerateMealPlan} 
+                    disabled={isGeneratingPlan}
+                        className="w-full sm:w-auto"
+                  >
+                    {isGeneratingPlan ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Generating {mealPlanDuration} meal plan...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        Generate {mealPlanDuration.charAt(0).toUpperCase() + mealPlanDuration.slice(1)} Meal Plan
+                      </>
+                    )}
+                  </Button>
+                    </div>
+                  )}
+                </>
+            )}
+
+            {mealPlan && (
+                <div className="mt-6 space-y-4">
+                  {/* Debug info - remove in production */}
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold">Your {mealPlanDuration.charAt(0).toUpperCase() + mealPlanDuration.slice(1)} Meal Plan</h3>
+                    <div className="flex gap-2 flex-wrap">
+                      <Button variant="outline" size="sm" onClick={() => setShowSaveDialog(true)}>
+                        <Save className="w-4 h-4 mr-2" />
+                        Save Plan
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => setShowLoadDialog(true)}>
+                        <FolderOpen className="w-4 h-4 mr-2" />
+                        Load Plan
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  {/* Duration Selector for Existing Meal Plan */}
+                  <div className="flex items-center gap-4 p-4 border rounded-lg bg-muted/30">
+                    <span className="text-sm font-medium">Change Duration:</span>
+                    <div className="flex gap-2">
+                      <Button
+                        variant={mealPlanDuration === 'daily' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => {
+                          setMealPlanDuration('daily');
+                          setMealPlan(null); // Clear current plan to trigger regeneration
+                        }}
+                      >
+                        Daily
+                      </Button>
+                      <Button
+                        variant={mealPlanDuration === 'weekly' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => {
+                          setMealPlanDuration('weekly');
+                          setMealPlan(null); // Clear current plan to trigger regeneration
+                        }}
+                      >
+                        Weekly
+                      </Button>
+                      <Button
+                        variant={mealPlanDuration === 'monthly' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => {
+                          setMealPlanDuration('monthly');
+                          setMealPlan(null); // Clear current plan to trigger regeneration
+                        }}
+                      >
+                        Monthly
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  {mealPlan.plan.map((day, dayIndex) => (
+                    <Card key={dayIndex}>
+                    <CardHeader>
+                        <CardTitle className="text-lg">{day.day}</CardTitle>
+                        <CardDescription>
+                          Daily Total: {day.dailyTotals.calories} cal • {day.dailyTotals.protein}g protein • {day.dailyTotals.carbohydrates}g carbs • {day.dailyTotals.fat}g fat
+                        </CardDescription>
+                    </CardHeader>
+                      <CardContent className="space-y-4">
+                        {/* Breakfast */}
+                        <div className="p-4 border rounded-lg">
+                          <h4 className="font-semibold text-orange-600">🌅 Breakfast: {day.breakfast.name}</h4>
+                          <p className="text-sm text-muted-foreground mb-2">{day.breakfast.description}</p>
+                          <div className="space-y-2">
+                                                            <div>
+                              <strong>Ingredients:</strong>
+                              <ul className="list-disc list-inside text-sm ml-2">
+                                {day.breakfast.ingredients.map((ingredient, idx) => (
+                                  <li key={idx}>{ingredient}</li>
+                                ))}
+                                                                </ul>
+                                                            </div>
+                                                            <div>
+                              <strong>Instructions:</strong>
+                              <p className="text-sm ml-2">{day.breakfast.instructions}</p>
+                                                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                                ⏱️ {day.breakfast.totalTime} min total
+                              </Badge>
+                              <Badge variant="outline" className="bg-green-50 text-green-700">
+                                🥄 {day.breakfast.prepTime} min prep
+                              </Badge>
+                              <Badge variant="outline" className="bg-orange-50 text-orange-700">
+                                🔥 {day.breakfast.cookTime} min cook
+                              </Badge>
+                            </div>
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              <Badge variant="outline">{day.breakfast.calories} cal</Badge>
+                              <Badge variant="outline">{day.breakfast.protein}g protein</Badge>
+                              <Badge variant="outline">{day.breakfast.carbohydrates}g carbs</Badge>
+                              <Badge variant="outline">{day.breakfast.fat}g fat</Badge>
+                                                        </div>
+                                                        </div>
+                        </div>
+
+                        {/* Lunch */}
+                        <div className="p-4 border rounded-lg">
+                          <h4 className="font-semibold text-accent">🌞 Lunch: {day.lunch.name}</h4>
+                          <p className="text-sm text-muted-foreground mb-2">{day.lunch.description}</p>
+                          <div className="space-y-2">
+                            <div>
+                              <strong>Ingredients:</strong>
+                              <ul className="list-disc list-inside text-sm ml-2">
+                                {day.lunch.ingredients.map((ingredient, idx) => (
+                                  <li key={idx}>{ingredient}</li>
+                                ))}
+                              </ul>
+                </div>
+                            <div>
+                              <strong>Instructions:</strong>
+                              <p className="text-sm ml-2">{day.lunch.instructions}</p>
+                  </div>
+                            <div className="flex flex-wrap gap-2">
+                              <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                                ⏱️ {day.lunch.totalTime} min total
+                              </Badge>
+                              <Badge variant="outline" className="bg-green-50 text-green-700">
+                                🥄 {day.lunch.prepTime} min prep
+                              </Badge>
+                              <Badge variant="outline" className="bg-orange-50 text-orange-700">
+                                🔥 {day.lunch.cookTime} min cook
+                              </Badge>
+                            </div>
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              <Badge variant="outline">{day.lunch.calories} cal</Badge>
+                              <Badge variant="outline">{day.lunch.protein}g protein</Badge>
+                              <Badge variant="outline">{day.lunch.carbohydrates}g carbs</Badge>
+                              <Badge variant="outline">{day.lunch.fat}g fat</Badge>
+                </div>
+                         </div>
+                            </div>
+
+                        {/* Dinner */}
+                        <div className="p-4 border rounded-lg">
+                          <h4 className="font-semibold text-primary">🌙 Dinner: {day.dinner.name}</h4>
+                          <p className="text-sm text-muted-foreground mb-2">{day.dinner.description}</p>
+                          <div className="space-y-2">
+                                                            <div>
+                              <strong>Ingredients:</strong>
+                              <ul className="list-disc list-inside text-sm ml-2">
+                                {day.dinner.ingredients.map((ingredient, idx) => (
+                                  <li key={idx}>{ingredient}</li>
+                                ))}
+                                                                </ul>
+                                                            </div>
+                                                            <div>
+                              <strong>Instructions:</strong>
+                              <p className="text-sm ml-2">{day.dinner.instructions}</p>
+                                                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                                ⏱️ {day.dinner.totalTime} min total
+                              </Badge>
+                              <Badge variant="outline" className="bg-green-50 text-green-700">
+                                🥄 {day.dinner.prepTime} min prep
+                              </Badge>
+                              <Badge variant="outline" className="bg-orange-50 text-orange-700">
+                                🔥 {day.dinner.cookTime} min cook
+                              </Badge>
+                            </div>
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              <Badge variant="outline">{day.dinner.calories} cal</Badge>
+                              <Badge variant="outline">{day.dinner.protein}g protein</Badge>
+                              <Badge variant="outline">{day.dinner.carbohydrates}g carbs</Badge>
+                              <Badge variant="outline">{day.dinner.fat}g fat</Badge>
+                                                        </div>
+                          </div>
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
+                  ))}
+                </div>
+              )}
+                                            </CardContent>
+                                        </Card>
+        </TabsContent>
+
+        <TabsContent value="planner" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Sparkles className="w-5 h-5 mr-2" />
+                🍽️ AI Meal Planner
+              </CardTitle>
+              <CardDescription>
+                ✨ Generate personalized meal plans based on your profile with comprehensive nutrition information
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {!userProfiles || userProfiles.length === 0 ? (
+                <div className="text-center py-8 space-y-4">
+                  <div className="w-16 h-16 mx-auto bg-muted rounded-full flex items-center justify-center">
+                    <User className="w-8 h-8 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-semibold mb-2">👤 Profile Required</h4>
+                    <p className="text-muted-foreground">
+                      Please complete your profile first to generate personalized meal plans. 📝
+                    </p>
+                  </div>
+                  <Button asChild>
+                    <Link href="/dashboard/profile">📝 Complete Profile</Link>
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  {/* Profile Display */}
+                  {displayProfile && (
+                    <div className="p-4 bg-muted/50 rounded-lg">
+                      <h4 className="font-semibold mb-2">👤 Your Profile</h4>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div><strong>🎂 Age:</strong> {displayProfile.age}</div>
+                        <div><strong>⚧ Gender:</strong> {displayProfile.gender}</div>
+                        <div><strong>📏 Height:</strong> {displayProfile.height} cm</div>
+                        <div><strong>⚖️ Weight:</strong> {displayProfile.weight} kg</div>
+                        <div><strong>🏃 Activity:</strong> {displayProfile.activityLevel}</div>
+                        <div><strong>🎯 Goal:</strong> {displayProfile.goal}</div>
+                        {displayProfile.cuisine && <div><strong>🌍 Cuisine:</strong> {displayProfile.cuisine}</div>}
+                        {displayProfile.allergies && <div><strong>⚠️ Allergies:</strong> {displayProfile.allergies}</div>}
+                        {displayProfile.dislikes && <div><strong>👎 Dislikes:</strong> {displayProfile.dislikes}</div>}
+                        {displayProfile.diet && <div><strong>🥗 Diet:</strong> {displayProfile.diet}</div>}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Duration Selection */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">📅 Meal Plan Duration</h3>
+                    <div className="flex gap-2 flex-wrap">
+                      <Button
+                        variant={mealPlanDuration === 'daily' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setMealPlanDuration('daily')}
+                      >
+                        📅 Daily (1 day)
+                      </Button>
+                      <Button
+                        variant={mealPlanDuration === 'weekly' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setMealPlanDuration('weekly')}
+                      >
+                        📆 Weekly (7 days)
+                      </Button>
+                      <Button
+                        variant={mealPlanDuration === 'monthly' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setMealPlanDuration('monthly')}
+                      >
+                        🗓️ Monthly (30 days)
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Generate Button */}
+                  {!mealPlan ? (
+                    <div className="text-center py-4 space-y-4">
+                      <div>
+                        <h4 className="text-lg font-semibold mb-2">🚀 Ready to Generate Your Meal Plan?</h4>
+                        <p className="text-muted-foreground">
+                          Your profile is complete! Click below to generate your personalized {mealPlanDuration} meal plan with comprehensive nutrition information. ✨
+                        </p>
+                      </div>
+                      <Button 
+                        onClick={handleGenerateMealPlan} 
+                        disabled={isGeneratingPlan}
+                        className="w-full sm:w-auto"
+                      >
+                        {isGeneratingPlan ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            🔄 Generating {mealPlanDuration} meal plan...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-4 h-4 mr-2" />
+                            ✨ Generate {mealPlanDuration.charAt(0).toUpperCase() + mealPlanDuration.slice(1)} Meal Plan
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="text-center py-4 space-y-4">
+                      <div>
+                        <h4 className="text-lg font-semibold mb-2">🎉 Meal Plan Generated!</h4>
+                        <p className="text-muted-foreground">
+                          Your personalized {mealPlanDuration} meal plan is ready! You can regenerate it anytime. 🍽️
+                        </p>
+                      </div>
+                      <div className="flex gap-2 justify-center">
+                        <Button 
+                          onClick={handleGenerateMealPlan} 
+                          disabled={isGeneratingPlan}
+                          variant="outline"
+                        >
+                          {isGeneratingPlan ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              🔄 Regenerating...
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-4 h-4 mr-2" />
+                              ✨ Regenerate Plan
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {mealPlan && (
+            <div className="mt-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">🍽️ Your {mealPlanDuration.charAt(0).toUpperCase() + mealPlanDuration.slice(1)} Meal Plan</h3>
+                <div className="flex gap-2 flex-wrap">
+                  <Button variant="outline" size="sm" onClick={handleExportToPDF}>
+                    <Download className="w-4 h-4 mr-2" />
+                    📄 Export
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleShareViaWhatsApp}>
+                    <Share2 className="w-4 h-4 mr-2" />
+                    📱 Share
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setShowSaveDialog(true)}>
+                    <Save className="w-4 h-4 mr-2" />
+                    💾 Save Plan
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setShowLoadDialog(true)}>
+                    <FolderOpen className="w-4 h-4 mr-2" />
+                    📂 Load Plan
+                  </Button>
+                </div>
+              </div>
+              
+              {/* Duration Change */}
+              <div className="flex items-center gap-4">
+                <span className="text-sm font-medium">🔄 Change Duration:</span>
+                <div className="flex gap-2">
+                  <Button
+                    variant={mealPlanDuration === 'daily' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => {
+                      setMealPlanDuration('daily');
+                      setMealPlan(null); // Clear current plan when changing duration
+                    }}
+                  >
+                    📅 Daily
+                  </Button>
+                  <Button
+                    variant={mealPlanDuration === 'weekly' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => {
+                      setMealPlanDuration('weekly');
+                      setMealPlan(null); // Clear current plan when changing duration
+                    }}
+                  >
+                    📆 Weekly
+                  </Button>
+                  <Button
+                    variant={mealPlanDuration === 'monthly' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => {
+                      setMealPlanDuration('monthly');
+                      setMealPlan(null); // Clear current plan when changing duration
+                    }}
+                  >
+                    🗓️ Monthly
+                  </Button>
+                </div>
+              </div>
+              
+              {mealPlan.plan.map((day, dayIndex) => (
+                <Card key={dayIndex}>
+                  <CardHeader>
+                    <CardTitle className="text-lg">{day.day}</CardTitle>
+                    <CardDescription>
+                      Daily Total: {day.dailyTotals.calories} cal • {day.dailyTotals.protein}g protein • {day.dailyTotals.carbohydrates}g carbs • {day.dailyTotals.fat}g fat
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Breakfast */}
+                    <div className="p-4 border rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-semibold flex items-center">
+                          <Sun className="w-4 h-4 mr-2" />
+                          Breakfast
+                        </h4>
+                        <div className="flex gap-2">
+                          <Badge variant="secondary">{day.breakfast.prepTime}min prep</Badge>
+                          <Badge variant="secondary">{day.breakfast.cookTime}min cook</Badge>
+                          <Badge variant="outline">{day.breakfast.totalTime}min total</Badge>
+                        </div>
+                      </div>
+                      <h5 className="font-medium text-lg mb-1">{day.breakfast.name}</h5>
+                      <p className="text-muted-foreground text-sm mb-3">{day.breakfast.description}</p>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
+                        <div>
+                          <h6 className="font-medium text-sm mb-1">🥘 Ingredients:</h6>
+                          <ul className="text-sm text-muted-foreground list-disc list-inside">
+                            {day.breakfast.ingredients.map((ingredient, idx) => (
+                              <li key={idx}>{ingredient}</li>
+                            ))}
+                          </ul>
+                        </div>
+                        <div>
+                          <h6 className="font-medium text-sm mb-1">📊 Macro Nutrients:</h6>
+                          <div className="text-sm text-muted-foreground">
+                            <div>🔥 {day.breakfast.calories} calories</div>
+                            <div>💪 {day.breakfast.protein}g protein</div>
+                            <div>🌾 {day.breakfast.carbohydrates}g carbs</div>
+                            <div>🥑 {day.breakfast.fat}g fat</div>
+                            {day.breakfast.fiber && <div>🌿 {day.breakfast.fiber}g fiber</div>}
+                            {day.breakfast.sugar && <div>🍯 {day.breakfast.sugar}g sugar</div>}
+                          </div>
+                        </div>
+                        <div>
+                          <h6 className="font-medium text-sm mb-1">💊 Micro Nutrients:</h6>
+                          <div className="text-sm text-muted-foreground">
+                            {day.breakfast.sodium && <div>🧂 {day.breakfast.sodium}mg sodium</div>}
+                            {day.breakfast.cholesterol && <div>💔 {day.breakfast.cholesterol}mg cholesterol</div>}
+                            {day.breakfast.vitaminA && <div>🥕 {day.breakfast.vitaminA}μg vitamin A</div>}
+                            {day.breakfast.vitaminC && <div>🍊 {day.breakfast.vitaminC}mg vitamin C</div>}
+                            {day.breakfast.calcium && <div>🥛 {day.breakfast.calcium}mg calcium</div>}
+                            {day.breakfast.iron && <div>🩸 {day.breakfast.iron}mg iron</div>}
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <h6 className="font-medium text-sm mb-1">👨‍🍳 Cooking Instructions:</h6>
+                        <p className="text-sm text-muted-foreground whitespace-pre-line">{day.breakfast.instructions}</p>
+                      </div>
+                    </div>
+
+                    {/* Lunch */}
+                    <div className="p-4 border rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-semibold flex items-center">
+                          <Sun className="w-4 h-4 mr-2" />
+                          Lunch
+                        </h4>
+                        <div className="flex gap-2">
+                          <Badge variant="secondary">{day.lunch.prepTime}min prep</Badge>
+                          <Badge variant="secondary">{day.lunch.cookTime}min cook</Badge>
+                          <Badge variant="outline">{day.lunch.totalTime}min total</Badge>
+                        </div>
+                      </div>
+                      <h5 className="font-medium text-lg mb-1">{day.lunch.name}</h5>
+                      <p className="text-muted-foreground text-sm mb-3">{day.lunch.description}</p>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
+                        <div>
+                          <h6 className="font-medium text-sm mb-1">Ingredients:</h6>
+                          <ul className="text-sm text-muted-foreground list-disc list-inside">
+                            {day.lunch.ingredients.map((ingredient, idx) => (
+                              <li key={idx}>{ingredient}</li>
+                            ))}
+                          </ul>
+                        </div>
+                        <div>
+                          <h6 className="font-medium text-sm mb-1">Macro Nutrients:</h6>
+                          <div className="text-sm text-muted-foreground">
+                            <div>{day.lunch.calories} calories</div>
+                            <div>{day.lunch.protein}g protein</div>
+                            <div>{day.lunch.carbohydrates}g carbs</div>
+                            <div>{day.lunch.fat}g fat</div>
+                            {day.lunch.fiber && <div>{day.lunch.fiber}g fiber</div>}
+                            {day.lunch.sugar && <div>{day.lunch.sugar}g sugar</div>}
+                          </div>
+                        </div>
+                        <div>
+                          <h6 className="font-medium text-sm mb-1">Micro Nutrients:</h6>
+                          <div className="text-sm text-muted-foreground">
+                            {day.lunch.sodium && <div>{day.lunch.sodium}mg sodium</div>}
+                            {day.lunch.cholesterol && <div>{day.lunch.cholesterol}mg cholesterol</div>}
+                            {day.lunch.vitaminA && <div>{day.lunch.vitaminA}μg vitamin A</div>}
+                            {day.lunch.vitaminC && <div>{day.lunch.vitaminC}mg vitamin C</div>}
+                            {day.lunch.calcium && <div>{day.lunch.calcium}mg calcium</div>}
+                            {day.lunch.iron && <div>{day.lunch.iron}mg iron</div>}
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <h6 className="font-medium text-sm mb-1">Cooking Instructions:</h6>
+                        <p className="text-sm text-muted-foreground whitespace-pre-line">{day.lunch.instructions}</p>
+                      </div>
+                    </div>
+
+                    {/* Dinner */}
+                    <div className="p-4 border rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-semibold flex items-center">
+                          <Moon className="w-4 h-4 mr-2" />
+                          Dinner
+                        </h4>
+                        <div className="flex gap-2">
+                          <Badge variant="secondary">{day.dinner.prepTime}min prep</Badge>
+                          <Badge variant="secondary">{day.dinner.cookTime}min cook</Badge>
+                          <Badge variant="outline">{day.dinner.totalTime}min total</Badge>
+                        </div>
+                      </div>
+                      <h5 className="font-medium text-lg mb-1">{day.dinner.name}</h5>
+                      <p className="text-muted-foreground text-sm mb-3">{day.dinner.description}</p>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
+                        <div>
+                          <h6 className="font-medium text-sm mb-1">Ingredients:</h6>
+                          <ul className="text-sm text-muted-foreground list-disc list-inside">
+                            {day.dinner.ingredients.map((ingredient, idx) => (
+                              <li key={idx}>{ingredient}</li>
+                            ))}
+                          </ul>
+                        </div>
+                        <div>
+                          <h6 className="font-medium text-sm mb-1">Macro Nutrients:</h6>
+                          <div className="text-sm text-muted-foreground">
+                            <div>{day.dinner.calories} calories</div>
+                            <div>{day.dinner.protein}g protein</div>
+                            <div>{day.dinner.carbohydrates}g carbs</div>
+                            <div>{day.dinner.fat}g fat</div>
+                            {day.dinner.fiber && <div>{day.dinner.fiber}g fiber</div>}
+                            {day.dinner.sugar && <div>{day.dinner.sugar}g sugar</div>}
+                          </div>
+                        </div>
+                        <div>
+                          <h6 className="font-medium text-sm mb-1">Micro Nutrients:</h6>
+                          <div className="text-sm text-muted-foreground">
+                            {day.dinner.sodium && <div>{day.dinner.sodium}mg sodium</div>}
+                            {day.dinner.cholesterol && <div>{day.dinner.cholesterol}mg cholesterol</div>}
+                            {day.dinner.vitaminA && <div>{day.dinner.vitaminA}μg vitamin A</div>}
+                            {day.dinner.vitaminC && <div>{day.dinner.vitaminC}mg vitamin C</div>}
+                            {day.dinner.calcium && <div>{day.dinner.calcium}mg calcium</div>}
+                            {day.dinner.iron && <div>{day.dinner.iron}mg iron</div>}
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <h6 className="font-medium text-sm mb-1">Cooking Instructions:</h6>
+                        <p className="text-sm text-muted-foreground whitespace-pre-line">{day.dinner.instructions}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {/* Save Meal Plan Dialog */}
+          <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Save Meal Plan</DialogTitle>
+                <DialogDescription>
+                  Give your meal plan a name so you can find it later.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="planName">Plan Name</Label>
+                  <Input
+                    id="planName"
+                    value={planName}
+                    onChange={(e) => setPlanName(e.target.value)}
+                    placeholder="e.g., My Weekly Plan"
+                    className="mt-1"
+                  />
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  <p><strong>Duration:</strong> {mealPlanDuration.charAt(0).toUpperCase() + mealPlanDuration.slice(1)}</p>
+                  <p><strong>Days:</strong> {mealPlan?.plan.length || 0}</p>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowSaveDialog(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={saveMealPlan} disabled={isSavingPlan || !planName.trim()}>
+                  {isSavingPlan ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    'Save Plan'
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Load Saved Meal Plans Dialog */}
+          <Dialog open={showLoadDialog} onOpenChange={setShowLoadDialog}>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Load Saved Meal Plan</DialogTitle>
+                <DialogDescription>
+                  Choose from your previously saved meal plans.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.location.reload()}
+                  disabled={savedMealPlansLoading}
+                >
+                  {savedMealPlansLoading ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : null}
+                  Refresh
+                </Button>
+              </div>
+              <div className="space-y-4">
+                {savedMealPlansLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin mr-2" />
+                    <span>Loading saved plans...</span>
+                  </div>
+                ) : savedMealPlansData.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <FolderOpen className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>No saved meal plans found.</p>
+                    <p className="text-sm">Generate and save a meal plan to see it here.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {savedMealPlansData.map((plan) => (
+                      <div key={plan.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex-1">
+                          <h4 className="font-medium">{plan.name}</h4>
+                          <p className="text-sm text-muted-foreground">
+                            {plan.description} • {plan.plan.plan.length} days
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Created: {plan.createdAt instanceof Date 
+                              ? plan.createdAt.toLocaleDateString() 
+                              : new Date(plan.createdAt.seconds * 1000).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => loadMealPlan(plan)}
+                          >
+                            Load
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => deleteMealPlan(plan.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowLoadDialog(false)}>
+                  Close
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </TabsContent>
+
+        <TabsContent value="history" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Food Log History</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {foodLogs && foodLogs.length > 0 ? (
+                <div className="space-y-2">
+                  {foodLogs
+                    .sort((a, b) => {
+                      const dateA = a.createdAt instanceof Date ? a.createdAt : a.createdAt.toDate();
+                      const dateB = b.createdAt instanceof Date ? b.createdAt : b.createdAt.toDate();
+                      return dateB.getTime() - dateA.getTime();
+                    })
+                    .map((food) => (
+                      <div key={food.id} className="flex items-center justify-between p-3 border rounded">
+                        <div>
+                          <p className="font-medium">{food.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                            {food.portion} • {food.weight}g • {food.createdAt instanceof Date ? food.createdAt.toLocaleDateString() : food.createdAt.toDate().toLocaleDateString()}
+                    </p>
+                         </div>
+                        <div className="text-right">
+                          <p className="font-medium">{food.calories} cal</p>
+                          <Badge variant="outline">{food.category}</Badge>
+                </div>
+                         </div>
+                            ))}
+                         </div>
+              ) : (
+                <p className="text-muted-foreground text-center py-8">
+                  No food entries yet. Start logging your meals!
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Save Meal Plan Dialog */}
+      <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Save Meal Plan</DialogTitle>
+            <DialogDescription>
+              Give your meal plan a name so you can find it later.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="planName">Plan Name</Label>
+              <Input
+                id="planName"
+                value={planName}
+                onChange={(e) => setPlanName(e.target.value)}
+                placeholder="e.g., My Weekly Weight Loss Plan"
+                className="mt-1"
+              />
+            </div>
+            <div className="text-sm text-muted-foreground">
+              <p><strong>Duration:</strong> {mealPlanDuration.charAt(0).toUpperCase() + mealPlanDuration.slice(1)}</p>
+              <p><strong>Days:</strong> {mealPlan?.plan.length || 0}</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSaveDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={saveMealPlan} disabled={isSavingPlan || !planName.trim()}>
+              {isSavingPlan ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  Save Plan
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Load Meal Plan Dialog */}
+      <Dialog open={showLoadDialog} onOpenChange={setShowLoadDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Load Saved Meal Plan</DialogTitle>
+            <DialogDescription>
+              Choose from your previously saved meal plans.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.location.reload()}
+              disabled={savedMealPlansLoading}
+            >
+              {savedMealPlansLoading ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : null}
+              Refresh
+            </Button>
+          </div>
+          <div className="space-y-4">
+            {savedMealPlansLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin mr-2" />
+                <span>Loading saved plans...</span>
+              </div>
+            ) : savedMealPlansData.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <FolderOpen className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p>No saved meal plans found.</p>
+                <p className="text-sm">Generate and save a meal plan to see it here.</p>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {savedMealPlansData.map((plan) => (
+                  <div key={plan.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex-1">
+                      <h4 className="font-medium">{plan.name}</h4>
+                      <p className="text-sm text-muted-foreground">
+                        {plan.description} • {plan.plan.plan.length} days
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Created: {plan.createdAt instanceof Date 
+                          ? plan.createdAt.toLocaleDateString()
+                          : new Date(plan.createdAt.seconds * 1000).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => loadMealPlan(plan)}
+                      >
+                        Load
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => deleteMealPlan(plan.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowLoadDialog(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

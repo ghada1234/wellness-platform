@@ -1,0 +1,169 @@
+{
+  "version": 3,
+  "pages404": true,
+  "caseSensitive": false,
+  "basePath": "",
+  "redirects": [
+    {
+      "source": "/:path+/",
+      "destination": "/:path+",
+      "internal": true,
+      "statusCode": 308,
+      "regex": "^(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))/$"
+    }
+  ],
+  "headers": [],
+  "dynamicRoutes": [],
+  "staticRoutes": [
+    {
+      "page": "/",
+      "regex": "^/(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/(?:/)?$"
+    },
+    {
+      "page": "/_not-found",
+      "regex": "^/_not\\-found(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/_not\\-found(?:/)?$"
+    },
+    {
+      "page": "/auth/forgot-password",
+      "regex": "^/auth/forgot\\-password(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/auth/forgot\\-password(?:/)?$"
+    },
+    {
+      "page": "/auth/sign-in",
+      "regex": "^/auth/sign\\-in(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/auth/sign\\-in(?:/)?$"
+    },
+    {
+      "page": "/auth/sign-up",
+      "regex": "^/auth/sign\\-up(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/auth/sign\\-up(?:/)?$"
+    },
+    {
+      "page": "/dashboard",
+      "regex": "^/dashboard(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard(?:/)?$"
+    },
+    {
+      "page": "/dashboard/activity",
+      "regex": "^/dashboard/activity(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/activity(?:/)?$"
+    },
+    {
+      "page": "/dashboard/ai-hub",
+      "regex": "^/dashboard/ai\\-hub(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/ai\\-hub(?:/)?$"
+    },
+    {
+      "page": "/dashboard/breathing",
+      "regex": "^/dashboard/breathing(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/breathing(?:/)?$"
+    },
+    {
+      "page": "/dashboard/journal",
+      "regex": "^/dashboard/journal(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/journal(?:/)?$"
+    },
+    {
+      "page": "/dashboard/meditation",
+      "regex": "^/dashboard/meditation(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/meditation(?:/)?$"
+    },
+    {
+      "page": "/dashboard/mindfulness",
+      "regex": "^/dashboard/mindfulness(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/mindfulness(?:/)?$"
+    },
+    {
+      "page": "/dashboard/mood",
+      "regex": "^/dashboard/mood(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/mood(?:/)?$"
+    },
+    {
+      "page": "/dashboard/notifications",
+      "regex": "^/dashboard/notifications(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/notifications(?:/)?$"
+    },
+    {
+      "page": "/dashboard/nutrition",
+      "regex": "^/dashboard/nutrition(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/nutrition(?:/)?$"
+    },
+    {
+      "page": "/dashboard/profile",
+      "regex": "^/dashboard/profile(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/profile(?:/)?$"
+    },
+    {
+      "page": "/dashboard/self-love",
+      "regex": "^/dashboard/self\\-love(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/self\\-love(?:/)?$"
+    },
+    {
+      "page": "/dashboard/sleep",
+      "regex": "^/dashboard/sleep(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/sleep(?:/)?$"
+    },
+    {
+      "page": "/dashboard/water",
+      "regex": "^/dashboard/water(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/water(?:/)?$"
+    },
+    {
+      "page": "/dashboard/wellness-report",
+      "regex": "^/dashboard/wellness\\-report(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/dashboard/wellness\\-report(?:/)?$"
+    },
+    {
+      "page": "/favicon.ico",
+      "regex": "^/favicon\\.ico(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/favicon\\.ico(?:/)?$"
+    },
+    {
+      "page": "/test",
+      "regex": "^/test(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/test(?:/)?$"
+    }
+  ],
+  "dataRoutes": [],
+  "rsc": {
+    "header": "RSC",
+    "varyHeader": "RSC, Next-Router-State-Tree, Next-Router-Prefetch, Next-Router-Segment-Prefetch",
+    "prefetchHeader": "Next-Router-Prefetch",
+    "didPostponeHeader": "x-nextjs-postponed",
+    "contentTypeHeader": "text/x-component",
+    "suffix": ".rsc",
+    "prefetchSuffix": ".prefetch.rsc",
+    "prefetchSegmentHeader": "Next-Router-Segment-Prefetch",
+    "prefetchSegmentSuffix": ".segment.rsc",
+    "prefetchSegmentDirSuffix": ".segments"
+  },
+  "rewriteHeaders": {
+    "pathHeader": "x-nextjs-rewritten-path",
+    "queryHeader": "x-nextjs-rewritten-query"
+  },
+  "rewrites": []
+}
