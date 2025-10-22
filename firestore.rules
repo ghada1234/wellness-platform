@@ -18,6 +18,12 @@ service cloud.firestore {
       allow write: if isAuthenticated() && isOwner(userId);
     }
     
+    // Saved Meal Plans - users can read/write their own saved plans
+    match /savedMealPlans/{planId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow write: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+    }
+    
     // Food Logs - users can read/write their own food logs
     match /users/{userId}/foodLog/{logId} {
       allow read: if isAuthenticated() && isOwner(userId);

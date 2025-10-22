@@ -13,7 +13,7 @@ import { db } from '@/lib/firebase';
 import {
   Loader2, ChefHat, Calendar, ShoppingCart, Download, Share2,
   Globe, Utensils, AlertCircle, CheckCircle, Clock, Users,
-  Flame, Target, Heart, Brain, Sparkles, User
+  Flame, Target, Heart, Brain, Sparkles, User, Save
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
@@ -165,6 +165,7 @@ export default function MealPlannerPage() {
   
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [mealPlan, setMealPlan] = useState<AIMealPlan | null>(null);
   
@@ -421,6 +422,54 @@ export default function MealPlannerPage() {
     
     const url = `https://wa.me/?text=${encodeURIComponent(summary)}`;
     window.open(url, '_blank');
+  };
+
+  const handleSaveMealPlan = async () => {
+    if (!mealPlan || !user) return;
+
+    setIsSaving(true);
+    try {
+      // Save to localStorage for immediate access
+      const savedPlans = JSON.parse(localStorage.getItem('saved-meal-plans') || '[]');
+      const planToSave = {
+        ...mealPlan,
+        savedAt: new Date().toISOString(),
+        userId: user.uid,
+      };
+      savedPlans.push(planToSave);
+      localStorage.setItem('saved-meal-plans', JSON.stringify(savedPlans));
+
+      // Try to save to Firebase
+      try {
+        const { doc: firestoreDoc, setDoc } = await import('firebase/firestore');
+        const planRef = firestoreDoc(db, 'savedMealPlans', mealPlan.planId);
+        await setDoc(planRef, {
+          ...mealPlan,
+          userId: user.uid,
+          savedAt: new Date().toISOString(),
+        });
+
+        toast({
+          title: 'Meal Plan Saved! 💾',
+          description: 'Your meal plan has been saved and will sync across devices.',
+        });
+      } catch (firebaseError) {
+        console.warn('Firebase save failed, but localStorage succeeded:', firebaseError);
+        toast({
+          title: 'Meal Plan Saved Locally! 💾',
+          description: 'Your meal plan is saved on this device.',
+        });
+      }
+    } catch (error) {
+      console.error('Failed to save meal plan:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Save Failed',
+        description: 'Could not save meal plan. Please try again.',
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (isLoading) {
@@ -702,7 +751,20 @@ export default function MealPlannerPage() {
                     {mealPlan.days.length}-day personalized meal plan • {mealPlan.planSummary.averageDailyCalories} cal/day average
                   </CardDescription>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
+                  <Button onClick={handleSaveMealPlan} disabled={isSaving} size="sm">
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4 mr-2" />
+                        Save Plan
+                      </>
+                    )}
+                  </Button>
                   <Button onClick={handleExportPDF} variant="outline" size="sm">
                     <Download className="h-4 w-4 mr-2" />
                     Export PDF
