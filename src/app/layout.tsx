@@ -2,6 +2,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Providers } from './providers';
+import { Analytics } from '@/components/analytics';
 
 export const metadata: Metadata = {
   title: 'Find Your Inner Peace - Wellness & Meditation App',
@@ -18,7 +19,7 @@ export default function RootLayout({
       <head>
         <link rel="icon" href="/icon.svg" type="image/svg+xml" />
         <link rel="apple-touch-icon" href="/apple-icon.svg" />
-        <meta name="google-site-verification" content="3IYEXikbDDOEa16c-zOpA9JUqXOXEocMl6tFhgQvpbQ" />
+        <meta name="google-site-verification" content="JR0E8TVTQchlocYADwCMzS95_cYIpIDpDGfVooxiX8I" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
@@ -33,6 +34,7 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased" suppressHydrationWarning>
         <Providers>{children}</Providers>
+        <Analytics measurementId={process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID} />
       </body>
     </html>
   );

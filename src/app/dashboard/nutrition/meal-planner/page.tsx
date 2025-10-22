@@ -10,6 +10,11 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { 
+  trackMealPlanGeneration, 
+  trackMealPlanSaved, 
+  trackMealPlanExported 
+} from '@/components/analytics';
 import {
   Loader2, ChefHat, Calendar, ShoppingCart, Download, Share2,
   Globe, Utensils, AlertCircle, CheckCircle, Clock, Users,
@@ -314,6 +319,13 @@ export default function MealPlannerPage() {
         console.log('✅ Gemini AI Meal Plan Generated:', result);
         setMealPlan(result);
         
+        // Track meal plan generation
+        trackMealPlanGeneration({
+          duration: parseInt(duration),
+          hasPreferences: !!(userProfile.cuisine || userProfile.diet),
+          hasRestrictions: !!(userProfile.allergies || userProfile.dislikes),
+        });
+        
         toast({
           title: '🎉 Meal Plan Generated!',
           description: `Your personalized ${duration}-day meal plan is ready!`,
@@ -337,6 +349,9 @@ export default function MealPlannerPage() {
 
   const handleExportPDF = () => {
     if (!mealPlan) return;
+    
+    // Track export
+    trackMealPlanExported(mealPlan.planId, 'pdf');
     
     const printWindow = window.open('', '_blank');
     if (printWindow) {
@@ -411,6 +426,9 @@ export default function MealPlannerPage() {
   const handleShareWhatsApp = () => {
     if (!mealPlan) return;
     
+    // Track share
+    trackMealPlanExported(mealPlan.planId, 'whatsapp');
+    
     const summary = `🍽️ *${mealPlan.planName}*\n\n` +
       `📊 *Plan Summary:*\n` +
       `• Duration: ${mealPlan.days.length} days\n` +
@@ -449,12 +467,19 @@ export default function MealPlannerPage() {
           savedAt: new Date().toISOString(),
         });
 
+        // Track save
+        trackMealPlanSaved(mealPlan.planId, mealPlan.days.length);
+        
         toast({
           title: 'Meal Plan Saved! 💾',
           description: 'Your meal plan has been saved and will sync across devices.',
         });
       } catch (firebaseError) {
         console.warn('Firebase save failed, but localStorage succeeded:', firebaseError);
+        
+        // Track save (even if only local)
+        trackMealPlanSaved(mealPlan.planId, mealPlan.days.length);
+        
         toast({
           title: 'Meal Plan Saved Locally! 💾',
           description: 'Your meal plan is saved on this device.',

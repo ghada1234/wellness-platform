@@ -38,6 +38,7 @@ import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/hooks/use-auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { trackProfileCompleted } from '@/components/analytics';
 
 const profileFormSchema = z.object({
   age: z.coerce.number().min(1, { message: 'Age is required.' }),
@@ -320,6 +321,9 @@ export default function ProfilePage() {
         await setDoc(profileRef, profileData, { merge: true });
         
         console.log('Profile saved to both localStorage and Firebase');
+        
+        // Track profile completion
+        trackProfileCompleted(!!(data.cuisine || data.diet || data.allergies || data.dislikes));
         
         toast({
           title: 'Profile Saved! 💾',
