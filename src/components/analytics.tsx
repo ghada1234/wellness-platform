@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import Script from 'next/script';
 
@@ -15,7 +15,7 @@ interface AnalyticsProps {
   measurementId?: string;
 }
 
-export function Analytics({ measurementId }: AnalyticsProps) {
+function AnalyticsContent({ measurementId }: AnalyticsProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -60,6 +60,17 @@ export function Analytics({ measurementId }: AnalyticsProps) {
         `}
       </Script>
     </>
+  );
+}
+
+// Export the main Analytics component with Suspense wrapper
+export function Analytics({ measurementId }: AnalyticsProps) {
+  if (!measurementId) return null;
+  
+  return (
+    <Suspense fallback={null}>
+      <AnalyticsContent measurementId={measurementId} />
+    </Suspense>
   );
 }
 
