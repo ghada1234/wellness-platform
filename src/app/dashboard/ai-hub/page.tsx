@@ -65,11 +65,78 @@ export default function AiHubPage() {
           journalEntries: ["Felt a bit stressed at work today.", "Grateful for the sunny weather."],
           goals: ['Improve Sleep', 'Be More Active'],
         };
+        
+        // Try to get AI recommendations
         const result = await getPersonalizedRecommendations(mockInput);
         setRecommendations(result);
-      } catch (e) {
-        console.error(e);
-        setError('Failed to fetch AI recommendations. Please try again later.');
+      } catch (e: any) {
+        console.error('AI Hub error:', e);
+        
+        // Check if it's an API key error
+        const errorMessage = e?.message || String(e);
+        if (errorMessage.includes('API key') || errorMessage.includes('GEMINI')) {
+          setError('⚠️ Gemini API key not configured. Using demo recommendations instead.');
+          
+          // Show demo recommendations
+          setRecommendations({
+            recommendations: [
+              {
+                title: "Improve Sleep Quality",
+                priority: "High",
+                impact: "High",
+                duration: "1-2 Weeks",
+                description: "Your sleep duration of 6.5 hours is below the recommended 7-8 hours. Better sleep improves mood, focus, and overall health.",
+                recommendedActions: [
+                  "Go to bed 30 minutes earlier each night",
+                  "Create a relaxing bedtime routine",
+                  "Avoid screens 1 hour before sleep",
+                  "Keep bedroom cool and dark"
+                ]
+              },
+              {
+                title: "Increase Daily Activity",
+                priority: "High",
+                impact: "Medium",
+                duration: "2-4 Weeks",
+                description: "With 4,500 steps daily, you're below the recommended 10,000 steps. More activity boosts energy and supports weight goals.",
+                recommendedActions: [
+                  "Take a 10-minute walk after meals",
+                  "Use stairs instead of elevator",
+                  "Park further away from destinations",
+                  "Set hourly movement reminders"
+                ]
+              },
+              {
+                title: "Enhance Meditation Practice",
+                priority: "Medium",
+                impact: "High",
+                duration: "1 Week",
+                description: "You're doing 5 minutes of meditation daily - great start! Increasing to 10-15 minutes can significantly reduce stress.",
+                recommendedActions: [
+                  "Try guided meditations from our library",
+                  "Meditate at the same time daily",
+                  "Use breathing exercises when stressed",
+                  "Track how you feel before and after"
+                ]
+              },
+              {
+                title: "Optimize Nutrition",
+                priority: "Medium",
+                impact: "Medium",
+                duration: "2-3 Weeks",
+                description: "Your calorie intake is on track. Focus on nutrient quality and meal timing for better results.",
+                recommendedActions: [
+                  "Use our AI Meal Planner for balanced meals",
+                  "Track macros with nutrition tracker",
+                  "Eat protein at every meal",
+                  "Stay hydrated with 8 glasses of water"
+                ]
+              }
+            ]
+          });
+        } else {
+          setError('Failed to fetch AI recommendations. Please try again later.');
+        }
       } finally {
         setIsLoadingRecs(false);
       }
@@ -201,7 +268,7 @@ export default function AiHubPage() {
               </CardContent>
             </Card>
           )}
-          {error && (
+          {error && !recommendations && (
             <Card className="border-destructive/20 bg-destructive/5">
               <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-destructive">
@@ -215,6 +282,18 @@ export default function AiHubPage() {
                 </Button>
               </CardContent>
             </Card>
+          )}
+          {error && recommendations && (
+            <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-yellow-800">Demo Mode</p>
+                  <p className="text-sm text-yellow-700">{error}</p>
+                  <p className="text-xs text-yellow-600 mt-1">Add Gemini API key to Vercel to get AI-powered recommendations based on your real data.</p>
+                </div>
+              </div>
+            </div>
           )}
           {recommendations && (
             <div className="space-y-6">
