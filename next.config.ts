@@ -26,6 +26,11 @@ const nextConfig: NextConfig = {
   },
   // Ensure proper routing
   trailingSlash: false,
+  // Suppress warnings during build
+  onDemandEntries: {
+    maxInactiveAge: 25 * 1000,
+    pagesBufferLength: 2,
+  },
   // Handle webpack warnings for Genkit
   webpack: (config, { isServer }) => {
     if (!isServer) {
@@ -36,6 +41,13 @@ const nextConfig: NextConfig = {
         tls: false,
       };
     }
+    
+    // Suppress specific warnings
+    config.ignoreWarnings = [
+      /Critical dependency: the request of a dependency is an expression/,
+      /require.extensions is not supported by webpack/,
+    ];
+    
     return config;
   },
 };
