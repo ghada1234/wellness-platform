@@ -13,7 +13,7 @@ import { db } from '@/lib/firebase';
 import {
   Loader2, ChefHat, Calendar, ShoppingCart, Download, Share2,
   Globe, Utensils, AlertCircle, CheckCircle, Clock, Users,
-  Flame, Target, Heart, Brain, Sparkles
+  Flame, Target, Heart, Brain, Sparkles, User
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
@@ -184,19 +184,31 @@ export default function MealPlannerPage() {
       try {
         setIsLoading(true);
         
-        // Try Firebase first
-        const profileRef = doc(db, 'userProfiles', user.uid);
-        const profileSnap = await getDoc(profileRef);
-        
-        if (profileSnap.exists()) {
-          setUserProfile(profileSnap.data() as UserProfile);
-        } else {
-          // Fallback to localStorage
-          const savedProfile = localStorage.getItem('user-nutrition-profile');
-          if (savedProfile) {
-            setUserProfile(JSON.parse(savedProfile));
-          }
+        // Try localStorage first for immediate access
+        const savedProfile = localStorage.getItem('user-nutrition-profile');
+        if (savedProfile) {
+          const profileData = JSON.parse(savedProfile);
+          console.log('Profile loaded from localStorage:', profileData);
+          setUserProfile(profileData as UserProfile);
         }
+        
+        // Then try Firebase for latest data
+        try {
+          const profileRef = doc(db, 'userProfiles', user.uid);
+          const profileSnap = await getDoc(profileRef);
+          
+          if (profileSnap.exists()) {
+            const firebaseData = profileSnap.data() as UserProfile;
+            console.log('Profile loaded from Firebase:', firebaseData);
+            setUserProfile(firebaseData);
+            // Update localStorage with latest from Firebase
+            localStorage.setItem('user-nutrition-profile', JSON.stringify(firebaseData));
+          }
+        } catch (firebaseError) {
+          console.warn('Firebase load failed, using localStorage:', firebaseError);
+          // Already have localStorage data, so this is okay
+        }
+        
       } catch (error) {
         console.error('Failed to load profile:', error);
         toast({
@@ -423,21 +435,55 @@ export default function MealPlannerPage() {
 
   if (!userProfile) {
     return (
-      <div className="flex-1 space-y-6 p-4 md:p-6">
-        <Card>
+      <div className="flex-1 space-y-6 p-4 md:p-6 max-w-4xl mx-auto">
+        <Card className="border-yellow-200 bg-yellow-50">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-yellow-600" />
+            <CardTitle className="flex items-center gap-2 text-yellow-800">
+              <AlertCircle className="h-5 w-5" />
               Profile Required
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-yellow-700">
               Please complete your profile to generate a personalized meal plan.
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <Button asChild>
-              <a href="/dashboard/profile">Go to Profile</a>
-            </Button>
+          <CardContent className="space-y-4">
+            <div className="p-4 bg-white rounded-lg border border-yellow-200">
+              <h4 className="font-semibold mb-2">Required Profile Information:</h4>
+              <ul className="space-y-1 text-sm text-muted-foreground">
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-yellow-600" />
+                  Age, Weight, Height, Gender
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-yellow-600" />
+                  Activity Level & Goals
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-yellow-600" />
+                  Cuisine Preferences (optional)
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-yellow-600" />
+                  Allergies & Dietary Restrictions (optional)
+                </li>
+              </ul>
+            </div>
+            
+            <div className="flex gap-3">
+              <Button asChild className="flex-1">
+                <a href="/dashboard/profile">
+                  <User className="mr-2 h-4 w-4" />
+                  Complete Profile Now
+                </a>
+              </Button>
+              <Button variant="outline" onClick={() => window.location.reload()}>
+                Reload Page
+              </Button>
+            </div>
+            
+            <p className="text-xs text-muted-foreground text-center">
+              After completing your profile, return here to generate your meal plan
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -455,6 +501,19 @@ export default function MealPlannerPage() {
         <p className="text-muted-foreground">
           Generate personalized meal plans based on your profile, preferences, and nutrition goals
         </p>
+        
+        {/* Debug Info - Remove after testing */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="p-3 bg-blue-50 rounded-lg text-xs">
+            <div><strong>Debug:</strong> Profile loaded: {userProfile ? '✅ YES' : '❌ NO'}</div>
+            {userProfile && (
+              <div className="mt-1">
+                Profile: {userProfile.age}yo, {userProfile.weight}kg, {userProfile.height}cm, 
+                {userProfile.cuisine ? ` Cuisine: ${userProfile.cuisine}` : ' No cuisine set'}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Profile Summary */}
