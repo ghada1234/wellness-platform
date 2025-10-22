@@ -1,0 +1,98 @@
+# 🔑 Environment Variables Template
+# Copy these to Vercel when deploying your project
+
+# ============================================
+# FIREBASE CONFIGURATION (REQUIRED)
+# ============================================
+# Get these from: https://console.firebase.google.com/
+# Project Settings → Your apps → Web app config
+
+NEXT_PUBLIC_FIREBASE_API_KEY=
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
+NEXT_PUBLIC_FIREBASE_APP_ID=
+NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=
+
+
+# ============================================
+# GOOGLE GEMINI AI (REQUIRED)
+# ============================================
+# Get from: https://aistudio.google.com/app/apikey
+# Required for: AI Meal Planner, AI Hub, Food Analysis
+
+GEMINI_API_KEY=
+
+
+# ============================================
+# GOOGLE ANALYTICS (OPTIONAL)
+# ============================================
+# Get from: https://analytics.google.com/
+# Admin → Data Streams → Your stream → Measurement ID
+
+NEXT_PUBLIC_GA_MEASUREMENT_ID=
+
+
+# ============================================
+# FITBIT API (OPTIONAL)
+# ============================================
+# Get from: https://dev.fitbit.com/apps
+# Your app → OAuth 2.0 Client ID & Secret
+# Required for: Wearable device integration
+
+FITBIT_CLIENT_ID=
+FITBIT_CLIENT_SECRET=
+
+
+# ============================================
+# HOW TO ADD THESE TO VERCEL:
+# ============================================
+# 1. Go to: https://vercel.com/new
+# 2. Import your GitHub repo: ghada1234/mind-main1
+# 3. Before deploying, click "Environment Variables"
+# 4. Copy each line above (without the # comments)
+# 5. Paste: Name in left box, Value in right box
+# 6. Click "Add" for each one
+# 7. Then click "Deploy"
+
+
+# ============================================
+# COPY FROM EXISTING PROJECT (IF YOU HAVE ONE):
+# ============================================
+# If you have an existing Vercel project with these values:
+# 1. Go to: https://vercel.com/ghada-rabees-projects/mind-main/settings/environment-variables
+# 2. Copy each variable's value
+# 3. Paste into the new project
+
+
+# ============================================
+# FIREBASE VALUES EXAMPLE:
+# ============================================
+# NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSyC_example_key_here
+# NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-app.firebaseapp.com
+# NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
+# NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your-app.appspot.com
+# NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=123456789012
+# NEXT_PUBLIC_FIREBASE_APP_ID=1:123456789012:web:abc123def456
+# NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=G-XXXXXXXXXX
+
+
+# ============================================
+# GEMINI API KEY EXAMPLE:
+# ============================================
+# GEMINI_API_KEY=AIzaSyD_example_gemini_key_here
+
+
+# ============================================
+# GOOGLE ANALYTICS EXAMPLE:
+# ============================================
+# NEXT_PUBLIC_GA_MEASUREMENT_ID=G-ABC123XYZ
+
+
+# ============================================
+# FITBIT API EXAMPLE:
+# ============================================
+# FITBIT_CLIENT_ID=23TGB6
+# FITBIT_CLIENT_SECRET=ecb5e5ce4536f64113fa6c65002d09a9
+
