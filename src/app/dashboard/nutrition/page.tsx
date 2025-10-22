@@ -368,22 +368,42 @@ export default function NutritionTrackerPage() {
       // Convert file to data URI
       const reader = new FileReader();
       reader.onload = async (e) => {
-        const dataUri = e.target?.result as string;
-        const result = await analyzeFoodPhoto({ photoDataUri: dataUri });
-        setAnalysisResult(result);
-       toast({
-          title: 'Analysis Complete! 🔍',
-          description: 'Food has been analyzed successfully.',
-      });
+        try {
+          const dataUri = e.target?.result as string;
+          const result = await analyzeFoodPhoto({ photoDataUri: dataUri });
+          setAnalysisResult(result);
+          toast({
+            title: 'Analysis Complete! 🔍',
+            description: 'Food has been analyzed successfully.',
+          });
+        } catch (analyzeError: any) {
+          console.error('Food analysis error:', analyzeError);
+          const errorMsg = analyzeError?.message || String(analyzeError);
+          
+          if (errorMsg.includes('API key') || errorMsg.includes('GEMINI')) {
+            toast({
+              variant: 'destructive',
+              title: '⚠️ API Key Required',
+              description: 'Gemini API key not configured. Add GEMINI_API_KEY to Vercel environment variables.',
+            });
+          } else {
+            toast({
+              variant: 'destructive',
+              title: 'Analysis Failed',
+              description: 'Could not analyze the food photo. Please try again.',
+            });
+          }
+        } finally {
+          setIsAnalyzing(false);
+        }
       };
       reader.readAsDataURL(file);
     } catch (error) {
-        toast({
-            variant: 'destructive',
+      toast({
+        variant: 'destructive',
         title: 'Analysis Failed',
-        description: 'Could not analyze the food photo. Please try again.',
-        });
-    } finally {
+        description: 'Could not read the file. Please try again.',
+      });
       setIsAnalyzing(false);
     }
   };
