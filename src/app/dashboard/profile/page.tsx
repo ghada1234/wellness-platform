@@ -306,25 +306,51 @@ export default function ProfilePage() {
 
     setIsSaving(true);
     try {
-      // Save to localStorage for immediate access
+      // Always save to localStorage first for immediate access
       localStorage.setItem(USER_PROFILE_STORAGE_KEY, JSON.stringify(data));
       
-      // Save to Firebase for cross-device persistence
-      const profileRef = doc(db, 'userProfiles', user.uid);
-      await setDoc(profileRef, data);
-      
-      toast({
-        title: 'Personal Information Saved! 💾',
-        description: 'Your information has been saved and will sync across all your devices.',
-      });
-      
-      console.log('Profile saved to both localStorage and Firebase');
-    } catch (error) {
+      // Try to save to Firebase for cross-device persistence
+      try {
+        const profileRef = doc(db, 'userProfiles', user.uid);
+        const profileData = {
+          ...data,
+          userId: user.uid,
+          updatedAt: new Date().toISOString(),
+        };
+        await setDoc(profileRef, profileData, { merge: true });
+        
+        console.log('Profile saved to both localStorage and Firebase');
+        
+        toast({
+          title: 'Profile Saved! 💾',
+          description: 'Your information has been saved and will sync across devices.',
+        });
+      } catch (firebaseError: any) {
+        console.warn('Firebase save failed, but localStorage save succeeded:', firebaseError);
+        
+        // Still show success since localStorage worked
+        toast({
+          title: 'Profile Saved Locally! 💾',
+          description: 'Your information is saved on this device. Cloud sync will retry later.',
+        });
+      }
+    } catch (error: any) {
       console.error('Failed to save user profile', error);
+      
+      let errorMessage = 'Could not save your personal information. Please try again.';
+      
+      if (error.code === 'permission-denied') {
+        errorMessage = 'Permission denied. Please check your authentication.';
+      } else if (error.code === 'unavailable') {
+        errorMessage = 'Service temporarily unavailable. Your data is saved locally.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         variant: 'destructive',
-        title: 'Error Saving Personal Information',
-        description: 'Could not save your personal information. Please try again.',
+        title: 'Error Saving Profile',
+        description: errorMessage,
       });
     } finally {
       setIsSaving(false);
