@@ -231,7 +231,7 @@ export default function NutritionTrackerPage() {
         
         // Then try Firebase
         try {
-          const profileRef = firestoreDoc(db, 'userProfiles', user.uid);
+          const profileRef = doc(db, 'userProfiles', user.uid);
           const profileSnap = await getDoc(profileRef);
           
           if (profileSnap.exists()) {
