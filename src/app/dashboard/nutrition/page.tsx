@@ -30,6 +30,60 @@ import { analyzeFoodPhoto, AnalyzeFoodPhotoOutput } from '@/ai/flows/analyze-foo
 import { doc, getDoc, collection, addDoc, updateDoc, deleteDoc, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
+// Helper functions for nutrition calculations
+const calculateBMR = (weight: number, height: number, age: number, gender: string): number => {
+  if (gender === 'male') {
+    return 10 * weight + 6.25 * height - 5 * age + 5;
+  } else {
+    return 10 * weight + 6.25 * height - 5 * age - 161;
+  }
+};
+
+const calculateTDEE = (bmr: number, activityLevel: string): number => {
+  const activityMultipliers: Record<string, number> = {
+    'sedentary': 1.2,
+    'lightly_active': 1.375,
+    'moderately_active': 1.55,
+    'very_active': 1.725
+  };
+  return bmr * (activityMultipliers[activityLevel] || 1.2);
+};
+
+const calculateMacros = (tdee: number, goal: string, weight: number) => {
+  let calorieTarget = tdee;
+  let proteinPerKg = 1.6;
+  
+  switch (goal) {
+    case 'weight_loss':
+      calorieTarget = tdee - 500;
+      proteinPerKg = 2.0;
+      break;
+    case 'muscle_gain':
+      calorieTarget = tdee + 300;
+      proteinPerKg = 2.2;
+      break;
+    case 'maintenance':
+    default:
+      calorieTarget = tdee;
+      proteinPerKg = 1.6;
+      break;
+  }
+  
+  const protein = Math.round(weight * proteinPerKg);
+  const proteinCalories = protein * 4;
+  const fatCalories = calorieTarget * 0.25;
+  const fat = Math.round(fatCalories / 9);
+  const carbCalories = calorieTarget - proteinCalories - fatCalories;
+  const carbs = Math.round(carbCalories / 4);
+  
+  return {
+    calories: Math.round(calorieTarget),
+    protein,
+    carbs,
+    fat,
+  };
+};
+
 interface FoodItem {
   id: string;
   name: string;
@@ -145,6 +199,11 @@ export default function NutritionTrackerPage() {
   };
   const { user } = useAuth();
   const { toast } = useToast();
+  
+  // Profile state
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  
   const foodCategories = [
     { id: 'breakfast', label: '🌅 Breakfast', icon: <Flame className="w-4 h-4" />, emoji: '🌅' },
     { id: 'lunch', label: '☀️ Lunch', icon: <Beef className="w-4 h-4" />, emoji: '☀️' },
@@ -154,6 +213,44 @@ export default function NutritionTrackerPage() {
   ];
   
   const [activeTab, setActiveTab] = useState('tracker');
+  
+  // Load user profile for personalized goals
+  React.useEffect(() => {
+    const loadProfile = async () => {
+      if (!user) {
+        setIsLoadingProfile(false);
+        return;
+      }
+
+      try {
+        // Try localStorage first
+        const savedProfile = localStorage.getItem('user-nutrition-profile');
+        if (savedProfile) {
+          setUserProfile(JSON.parse(savedProfile));
+        }
+        
+        // Then try Firebase
+        try {
+          const profileRef = firestoreDoc(db, 'userProfiles', user.uid);
+          const profileSnap = await getDoc(profileRef);
+          
+          if (profileSnap.exists()) {
+            const profileData = profileSnap.data();
+            setUserProfile(profileData);
+            localStorage.setItem('user-nutrition-profile', JSON.stringify(profileData));
+          }
+        } catch (firebaseError) {
+          console.warn('Firebase profile load failed, using localStorage');
+        }
+      } catch (error) {
+        console.error('Failed to load profile:', error);
+      } finally {
+        setIsLoadingProfile(false);
+      }
+    };
+
+    loadProfile();
+  }, [user]);
   const [showAddFood, setShowAddFood] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalyzeFoodPhotoOutput | null>(null);
@@ -774,15 +871,37 @@ export default function NutritionTrackerPage() {
     sugar: totals.sugar + (log.sugar || 0),
   }), { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0 });
 
-  // Daily goals
-  const dailyGoals = {
-    calories: 2000,
-    protein: 150,
-    carbs: 250,
-    fat: 65,
-    fiber: 25,
-    sugar: 50,
-  };
+  // Calculate personalized daily goals from profile
+  const dailyGoals = React.useMemo(() => {
+    if (userProfile && userProfile.weight && userProfile.height && userProfile.age && userProfile.gender) {
+      const bmr = calculateBMR(userProfile.weight, userProfile.height, userProfile.age, userProfile.gender);
+      const tdee = calculateTDEE(bmr, userProfile.activityLevel || 'sedentary');
+      const macros = calculateMacros(tdee, userProfile.goal || 'maintenance', userProfile.weight);
+      
+      return {
+        bmr: Math.round(bmr),
+        tdee: Math.round(tdee),
+        calories: macros.calories,
+        protein: macros.protein,
+        carbs: macros.carbs,
+        fat: macros.fat,
+        fiber: userProfile.gender === 'male' ? 38 : 25,
+        sugar: 30,
+      };
+    }
+    
+    // Default goals if no profile
+    return {
+      bmr: 1500,
+      tdee: 1800,
+      calories: 2000,
+      protein: 150,
+      carbs: 250,
+      fat: 65,
+      fiber: 25,
+      sugar: 50,
+    };
+  }, [userProfile]);
 
   return (
     <div className="container mx-auto p-6 space-y-6">
