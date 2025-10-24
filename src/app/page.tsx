@@ -20,11 +20,6 @@ export default function LandingPage() {
           <span className="text-foreground font-semibold text-sm sm:text-base">Find Your Inner Peace</span>
         </Link>
         <nav className="ml-auto flex gap-1 sm:gap-2">
-          <Link href="/dashboard/pricing">
-            <Button variant="ghost" size="sm" className="text-xs sm:text-sm">
-              Pricing
-            </Button>
-          </Link>
           <Link href="/auth/sign-in">
             <Button variant="outline" size="sm" className="text-xs sm:text-sm">
               Sign In
@@ -46,9 +41,9 @@ export default function LandingPage() {
                   </p>
                 </div>
                 <div className="flex flex-col gap-2 sm:flex-row sm:justify-center lg:justify-start">
-                  <Link href="/dashboard/pricing">
+                  <Link href="/auth/sign-up">
                     <Button size="lg" className="w-full sm:w-auto">
-                      Subscribe Now - AED 25.67/month
+                      Get Started Free
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                   </Link>
@@ -549,90 +544,90 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Pricing Section */}
+        {/* Features Overview Section */}
         <section className="w-full py-12 md:py-24 bg-secondary">
           <div className="container px-4 md:px-6">
             <div className="flex flex-col items-center justify-center space-y-8 text-center">
               <div className="space-y-2">
                 <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">
-                  Simple, Transparent Pricing
+                  Complete Wellness Platform
                 </h2>
                 <p className="max-w-[600px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                  Get unlimited access to all features, premium meditation sessions, and AI-powered insights for just AED 25.67/month.
+                  Access all our AI-powered wellness features, meditation sessions, and personalized insights completely free.
                 </p>
               </div>
 
-              {/* Pricing Card - Premium Only */}
+              {/* Features Card - Free Access */}
               <div className="max-w-lg w-full mt-8 mx-auto">
-                <div className="flex flex-col p-8 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border-2 border-primary shadow-2xl relative">
+                <div className="flex flex-col p-8 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl border-2 border-green-200 dark:border-green-800 shadow-2xl relative">
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                    <span className="bg-primary text-primary-foreground text-xs font-semibold px-4 py-1.5 rounded-full">
-                      SUBSCRIPTION REQUIRED
+                    <span className="bg-green-500 text-white text-xs font-semibold px-4 py-1.5 rounded-full">
+                      COMPLETELY FREE
                     </span>
                   </div>
                   
                   <div className="mb-6 text-center">
-                    <h3 className="text-3xl font-bold mb-3">Premium Membership</h3>
+                    <h3 className="text-3xl font-bold mb-3 text-green-700 dark:text-green-400">Free Access</h3>
                     <div className="flex items-baseline justify-center gap-1 mb-4">
-                      <span className="text-5xl font-bold">AED 25.67</span>
+                      <span className="text-5xl font-bold text-green-600 dark:text-green-400">$0</span>
                       <span className="text-muted-foreground text-lg">/month</span>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Complete access to all wellness features and tools
+                      Full access to all wellness features and tools
                     </p>
                   </div>
                   
                   <div className="space-y-3 mb-8 flex-1">
                     <div className="flex items-start gap-3">
-                      <CheckCircle className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                      <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
                       <span className="text-sm">Unlimited meditation sessions (5-60 min)</span>
                     </div>
                     <div className="flex items-start gap-3">
-                      <CheckCircle className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                      <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
                       <span className="text-sm">AI-powered nutrition analysis</span>
                     </div>
                     <div className="flex items-start gap-3">
-                      <CheckCircle className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                      <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
                       <span className="text-sm">Food photo recognition & analysis</span>
                     </div>
                     <div className="flex items-start gap-3">
-                      <CheckCircle className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                      <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
                       <span className="text-sm font-semibold">AI-generated personalized meal plans 🆕</span>
                     </div>
                     <div className="flex items-start gap-3">
-                      <CheckCircle className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                      <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
                       <span className="text-sm">Advanced breathing & mindfulness exercises</span>
                     </div>
                     <div className="flex items-start gap-3">
-                      <CheckCircle className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                      <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
                       <span className="text-sm">Mood tracking & mental wellness tools</span>
                     </div>
                     <div className="flex items-start gap-3">
-                      <CheckCircle className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                      <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
                       <span className="text-sm">Sleep analysis & activity tracking</span>
                     </div>
                     <div className="flex items-start gap-3">
-                      <CheckCircle className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                      <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
                       <span className="text-sm">Comprehensive wellness reports</span>
                     </div>
                     <div className="flex items-start gap-3">
-                      <CheckCircle className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                      <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
                       <span className="text-sm">AI Hub with personalized insights</span>
                     </div>
                     <div className="flex items-start gap-3">
-                      <CheckCircle className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                      <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
                       <span className="text-sm">Digital journaling & self-love practices</span>
                     </div>
                     <div className="flex items-start gap-3">
-                      <CheckCircle className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-                      <span className="text-sm">Priority support & ad-free experience</span>
+                      <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
+                      <span className="text-sm">Community support & regular updates</span>
                     </div>
                   </div>
                   
-                  <Link href="/dashboard/pricing" className="w-full">
-                    <Button size="lg" className="w-full text-lg py-6">
+                  <Link href="/auth/sign-up" className="w-full">
+                    <Button size="lg" className="w-full text-lg py-6 bg-green-600 hover:bg-green-700">
                       <Sparkles className="mr-2 h-5 w-5" />
-                      Subscribe Now
+                      Get Started Free
                     </Button>
                   </Link>
                 </div>
@@ -641,20 +636,20 @@ export default function LandingPage() {
               {/* Additional Info */}
               <div className="mt-8 text-center max-w-2xl">
                 <p className="text-sm text-muted-foreground mb-4">
-                  All plans include secure data encryption, regular updates, and access to our supportive community.
+                  All features include secure data encryption, regular updates, and access to our supportive community.
                 </p>
                 <div className="flex flex-wrap justify-center gap-6 text-xs text-muted-foreground">
                   <div className="flex items-center gap-2">
                     <CheckCircle className="h-4 w-4 text-green-500" />
-                    <span>Cancel anytime</span>
+                    <span>No credit card required</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle className="h-4 w-4 text-green-500" />
-                    <span>Secure payments via PayPal</span>
+                    <span>Secure data encryption</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle className="h-4 w-4 text-green-500" />
-                    <span>7-day money-back guarantee</span>
+                    <span>Regular feature updates</span>
                   </div>
                 </div>
               </div>
