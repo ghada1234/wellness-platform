@@ -22,24 +22,37 @@ function AnalyticsContent({ measurementId }: AnalyticsProps) {
   useEffect(() => {
     if (!measurementId) return;
     
-    if (typeof window.gtag === 'function') {
-      const url = pathname + (searchParams.toString() ? `?${searchParams.toString()}` : '');
-      window.gtag('config', measurementId, {
-        page_path: url,
-      });
-      
-      // Track page view
-      window.gtag('event', 'page_view', {
-        page_path: url,
-        page_title: document.title,
-      });
-      
-      console.log('📊 Analytics tracked page:', url);
+    try {
+      if (typeof window !== 'undefined' && typeof window.gtag === 'function') {
+        const url = pathname + (searchParams?.toString() ? `?${searchParams.toString()}` : '');
+        window.gtag('config', measurementId, {
+          page_path: url,
+        });
+        
+        // Track page view
+        if (typeof document !== 'undefined') {
+          window.gtag('event', 'page_view', {
+            page_path: url,
+            page_title: document.title,
+          });
+        }
+        
+        if (process.env.NODE_ENV === 'development') {
+          console.log('📊 Analytics tracked page:', url);
+        }
+      }
+    } catch (error) {
+      // Silently fail in production to prevent client-side errors
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Analytics error:', error);
+      }
     }
   }, [measurementId, pathname, searchParams]);
 
   if (!measurementId) {
-    console.warn('⚠️ Google Analytics Measurement ID not provided');
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('⚠️ Google Analytics Measurement ID not provided');
+    }
     return null;
   }
 
@@ -51,12 +64,14 @@ function AnalyticsContent({ measurementId }: AnalyticsProps) {
       />
       <Script id="google-analytics" strategy="afterInteractive">
         {`
-          window.dataLayer = window.dataLayer || [];
-          function gtag(){dataLayer.push(arguments);}
-          gtag('js', new Date());
-          gtag('config', '${measurementId}', {
-            page_path: window.location.pathname,
-          });
+          if (typeof window !== 'undefined') {
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', '${measurementId}', {
+              page_path: window.location.pathname,
+            });
+          }
         `}
       </Script>
     </>
