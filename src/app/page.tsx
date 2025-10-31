@@ -41,12 +41,6 @@ export default function LandingPage() {
                   </p>
                 </div>
                 <div className="flex flex-col gap-2 sm:flex-row sm:justify-center lg:justify-start">
-                  <Link href="/auth/sign-up">
-                    <Button size="lg" className="w-full sm:w-auto">
-                      Get Started Free
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  </Link>
                   <Link href="/auth/sign-in">
                     <Button variant="outline" size="lg" className="w-full sm:w-auto">
                       Sign In
@@ -531,14 +525,7 @@ export default function LandingPage() {
                 <p className="text-muted-foreground max-w-2xl mx-auto">
                   New to wellness tracking? Follow our quick start guide to get the most out of your journey.
                 </p>
-                <div className="flex justify-center">
-                <Link href="/auth/sign-up">
-                  <Button size="lg" className="w-full sm:w-auto">
-                      <Play className="mr-2 h-4 w-4" />
-                    Get Started Free
-                  </Button>
-                </Link>
-                </div>
+                {/* Sign up button removed */}
               </div>
             </div>
           </div>
@@ -624,12 +611,7 @@ export default function LandingPage() {
                     </div>
                   </div>
                   
-                  <Link href="/auth/sign-up" className="w-full">
-                    <Button size="lg" className="w-full text-lg py-6 bg-green-600 hover:bg-green-700">
-                      <Sparkles className="mr-2 h-5 w-5" />
-                      Get Started Free
-                    </Button>
-                  </Link>
+                  {/* Sign up button removed */}
                 </div>
               </div>
 
